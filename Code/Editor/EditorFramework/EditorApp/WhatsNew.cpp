@@ -20,7 +20,7 @@ void ezWhatsNewText::Load(const char* szFile)
 
   {
     ezFileReader file;
-    if (file.Open(":appdata/LastWhatsNew.txt").Failed())
+    if (file.Open(":appdata/LastWhatsNew.htm").Failed())
     {
       m_bHasChanged = true;
       return;
@@ -38,7 +38,7 @@ void ezWhatsNewText::StoreLastRead()
   m_bHasChanged = false;
 
   ezFileWriter file;
-  if (file.Open(":appdata/LastWhatsNew.txt").Failed())
+  if (file.Open(":appdata/LastWhatsNew.htm").Failed())
     return;
 
   file.WriteBytes(m_sText.GetData(), m_sText.GetElementCount());
