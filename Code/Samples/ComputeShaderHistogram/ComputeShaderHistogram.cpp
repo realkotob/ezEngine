@@ -1,6 +1,7 @@
 #include <ComputeShaderHistogram/ComputeShaderHistogram.h>
 
 #include <Core/Graphics/Geometry.h>
+#include <Core/Input/DeviceTypes/MouseKeyboard.h>
 #include <Core/Input/InputManager.h>
 #include <Core/System/Window.h>
 #include <Core/System/WindowManager.h>
@@ -40,8 +41,8 @@ void ezComputeShaderHistogramApp::Run()
   }
 #endif
 
-  ezUInt32 uiWindowWidth = m_pWindow->GetClientAreaSize().width;
-  ezUInt32 uiWindowHeight = m_pWindow->GetClientAreaSize().height;
+  const ezUInt32 uiWindowWidth = m_pWindow->GetClientAreaSize().width;
+  const ezUInt32 uiWindowHeight = m_pWindow->GetClientAreaSize().height;
 
   // do the rendering
   {
@@ -158,6 +159,12 @@ void ezComputeShaderHistogramApp::AfterCoreSystemsStartup()
   EZ_VERIFY(m_pDirectoryWatcher->OpenDirectory(FindProjectDirectory(), ezDirectoryWatcher::Watch::Writes | ezDirectoryWatcher::Watch::Subdirectories).Succeeded(), "Failed to watch project directory");
 #endif
   auto device = ezGALDevice::GetDefaultDevice();
+
+  if (auto pInput = ezInputManager::GetInputDeviceOfType<ezInputDeviceMouseKeyboard>())
+  {
+    pInput->SetShowMouseCursor(true);
+    pInput->SetClipMouseCursor(ezMouseCursorClipMode::NoClip);
+  }
 
   // Retrieve window and swapchain handle for rendering
   {
