@@ -87,7 +87,6 @@ ezLSAOPass::~ezLSAOPass()
   DestroyLineSweepData();
 
   ezRenderContext::DeleteConstantBufferStorage(m_hLineSweepCB);
-  m_hLineSweepCB.Invalidate();
 }
 
 bool ezLSAOPass::GetRenderTargetDescriptions(const ezView& view, const ezArrayPtr<ezGALTextureCreationDescription* const> inputs, ezArrayPtr<ezGALTextureCreationDescription> outputs)
@@ -326,13 +325,8 @@ void ezLSAOPass::DestroyLineSweepData()
 {
   ezGALDevice* device = ezGALDevice::GetDefaultDevice();
 
-  if (!m_hLineSweepOutputBuffer.IsInvalidated())
-    device->DestroyBuffer(m_hLineSweepOutputBuffer);
-  m_hLineSweepOutputBuffer.Invalidate();
-
-  if (!m_hLineInfoBuffer.IsInvalidated())
-    device->DestroyBuffer(m_hLineInfoBuffer);
-  m_hLineInfoBuffer.Invalidate();
+  device->DestroyBuffer(m_hLineSweepOutputBuffer);
+  device->DestroyBuffer(m_hLineInfoBuffer);
 }
 
 void ezLSAOPass::SetupLineSweepData(const ezVec3I32& imageResolution)

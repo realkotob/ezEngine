@@ -37,10 +37,16 @@ namespace
 
   void DestroyDependencies(ezGALDevice* pDevice, const ezGALGraphicsPipelineCreationDescription& graphicsPipelineDesc)
   {
-    pDevice->DestroyShader(graphicsPipelineDesc.m_hShader);
-    pDevice->DestroyBlendState(graphicsPipelineDesc.m_hBlendState);
-    pDevice->DestroyDepthStencilState(graphicsPipelineDesc.m_hDepthStencilState);
-    pDevice->DestroyRasterizerState(graphicsPipelineDesc.m_hRasterizerState);
+    // the destroy functions want a mutable reference but we don't want to modify the original description
+    auto hShader = graphicsPipelineDesc.m_hShader;
+    auto hRasterizerState = graphicsPipelineDesc.m_hRasterizerState;
+    auto hBlendState = graphicsPipelineDesc.m_hBlendState;
+    auto hDepthStencilState = graphicsPipelineDesc.m_hDepthStencilState;
+
+    pDevice->DestroyShader(hShader);
+    pDevice->DestroyRasterizerState(hRasterizerState);
+    pDevice->DestroyBlendState(hBlendState);
+    pDevice->DestroyDepthStencilState(hDepthStencilState);
   }
 } // namespace
 
@@ -146,7 +152,9 @@ EZ_CREATE_SIMPLE_RENDERER_TEST(DataStructures, StateDeduplication)
     EZ_TEST_INT(pDevice->GetGraphicsPipeline(hGraphicsPipeline)->GetRefCount(), 1);
     VerifyDependenciesRefCount(pDevice, graphicsPipelineDesc, 2);
 
-    pDevice->DestroyGraphicsPipeline(hGraphicsPipeline);
+    // The destroy function below will invalidate the handle, so we need to copy it for later use.
+    auto hGraphicsPipelineCopy = hGraphicsPipeline;
+    pDevice->DestroyGraphicsPipeline(hGraphicsPipelineCopy);
     VerifyDependenciesRefCount(pDevice, graphicsPipelineDesc, 1);
     DestroyDependencies(pDevice, graphicsPipelineDesc);
 
@@ -168,7 +176,9 @@ EZ_CREATE_SIMPLE_RENDERER_TEST(DataStructures, StateDeduplication)
     CreateDependencies(graphicsPipelineDesc);
     hGraphicsPipeline = pDevice->CreateGraphicsPipeline(graphicsPipelineDesc);
 
-    pDevice->DestroyGraphicsPipeline(hGraphicsPipeline);
+    // The destroy function below will invalidate the handle, so we need to copy it for later use.
+    auto hGraphicsPipelineCopy = hGraphicsPipeline;
+    pDevice->DestroyGraphicsPipeline(hGraphicsPipelineCopy);
     DestroyDependencies(pDevice, graphicsPipelineDesc);
 
     EZ_TEST_INT(pDevice->GetGraphicsPipeline(hGraphicsPipeline)->GetRefCount(), 0);
@@ -201,7 +211,10 @@ EZ_CREATE_SIMPLE_RENDERER_TEST(DataStructures, StateDeduplication)
 
     // Destroy dependencies first this time
     DestroyDependencies(pDevice, graphicsPipelineDesc);
-    pDevice->DestroyGraphicsPipeline(hGraphicsPipeline);
+
+    // The destroy function below will invalidate the handle, so we need to copy it for later use.
+    auto hGraphicsPipelineCopy = hGraphicsPipeline;
+    pDevice->DestroyGraphicsPipeline(hGraphicsPipelineCopy);
 
     EZ_TEST_INT(pDevice->GetGraphicsPipeline(hGraphicsPipeline)->GetRefCount(), 0);
     VerifyDependenciesRefCount(pDevice, graphicsPipelineDesc, 0);
@@ -248,7 +261,9 @@ EZ_CREATE_SIMPLE_RENDERER_TEST(DataStructures, StateDeduplication)
     EZ_TEST_INT(pDevice->GetGraphicsPipeline(hGraphicsPipeline)->GetRefCount(), 1);
     VerifyDependenciesRefCount(pDevice, graphicsPipelineDesc, 1);
 
-    pDevice->DestroyGraphicsPipeline(hGraphicsPipeline);
+    // The destroy function below will invalidate the handle, so we need to copy it for later use.
+    auto hGraphicsPipelineCopy = hGraphicsPipeline;
+    pDevice->DestroyGraphicsPipeline(hGraphicsPipelineCopy);
 
     EZ_TEST_INT(pDevice->GetGraphicsPipeline(hGraphicsPipeline)->GetRefCount(), 0);
     VerifyDependenciesRefCount(pDevice, graphicsPipelineDesc, 0);

@@ -60,11 +60,7 @@ void ezRmlUiCanvas2DComponent::Deinitialize()
 {
   SUPER::Deinitialize();
 
-  if (m_hTexture.IsInvalidated() == false)
-  {
-    ezGALDevice::GetDefaultDevice()->DestroyTexture(m_hTexture);
-    m_hTexture.Invalidate();
-  }
+  ezGALDevice::GetDefaultDevice()->DestroyTexture(m_hTexture);
 
   if (m_pContext != nullptr)
   {

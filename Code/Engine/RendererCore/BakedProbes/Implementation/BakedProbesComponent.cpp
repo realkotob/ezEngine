@@ -403,10 +403,7 @@ void ezBakedProbesComponent::RenderDebugOverlay()
 
   if (uiTextureWidth != uiWidth || uiTextureHeight != uiHeight)
   {
-    if (!m_hDebugViewTexture.IsInvalidated())
-    {
-      pDevice->DestroyTexture(m_hDebugViewTexture);
-    }
+    pDevice->DestroyTexture(m_hDebugViewTexture);
 
     ezGALTextureCreationDescription desc;
     desc.m_uiWidth = uiWidth;
