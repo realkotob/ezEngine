@@ -1,11 +1,8 @@
 #pragma once
 
-#include <Core/World/ComponentManager.h>
 #include <GameEngine/Physics/ClothSheetSimulator.h>
 #include <RendererCore/Components/RenderComponent.h>
-#include <RendererCore/Meshes/MeshBufferResource.h>
 #include <RendererCore/Pipeline/RenderData.h>
-#include <RendererCore/Pipeline/Renderer.h>
 
 using ezMaterialResourceHandle = ezTypedResourceHandle<class ezMaterialResource>;
 using ezDynamicMeshBufferResourceHandle = ezTypedResourceHandle<class ezDynamicMeshBufferResource>;
@@ -26,41 +23,6 @@ private:
 };
 
 //////////////////////////////////////////////////////////////////////////
-
-class EZ_GAMECOMPONENTS_DLL ezClothSheetRenderData final : public ezRenderData
-{
-  EZ_ADD_DYNAMIC_REFLECTION(ezClothSheetRenderData, ezRenderData);
-
-public:
-  ezUInt32 m_uiUniqueID = 0;
-  ezArrayPtr<ezVec3> m_Positions;
-  ezArrayPtr<ezUInt16> m_Indices;
-  ezUInt16 m_uiVerticesX;
-  ezUInt16 m_uiVerticesY;
-  ezColor m_Color;
-
-  ezMaterialResourceHandle m_hMaterial;
-};
-
-class EZ_GAMECOMPONENTS_DLL ezClothSheetRenderer : public ezRenderer
-{
-  EZ_ADD_DYNAMIC_REFLECTION(ezClothSheetRenderer, ezRenderer);
-  EZ_DISALLOW_COPY_AND_ASSIGN(ezClothSheetRenderer);
-
-public:
-  ezClothSheetRenderer();
-  ~ezClothSheetRenderer();
-
-  virtual void GetSupportedRenderDataCategories(ezHybridArray<ezRenderData::Category, 8>& ref_categories) const override;
-  virtual void GetSupportedRenderDataTypes(ezHybridArray<const ezRTTI*, 8>& ref_types) const override;
-  virtual void RenderBatch(const ezRenderViewContext& renderContext, const ezRenderPipelinePass* pPass, const ezRenderDataBatch& batch) const override;
-
-
-protected:
-  void CreateVertexBuffer();
-
-  ezDynamicMeshBufferResourceHandle m_hDynamicMeshBuffer;
-};
 
 /// \brief Flags for how a piece of cloth should be simulated.
 struct EZ_GAMECOMPONENTS_DLL ezClothSheetFlags
@@ -168,6 +130,7 @@ public:
 
 private:
   void Update();
+  void UpdateClothMesh();
   void SetupCloth();
 
   ezVec2 m_vSize;
@@ -176,9 +139,9 @@ private:
   ezBitflags<ezClothSheetFlags> m_Flags;
 
   ezUInt8 m_uiSleepCounter = 0;
-  mutable ezUInt8 m_uiVisibleCounter = 0;
   ezUInt8 m_uiCheckEquilibriumCounter = 0;
   ezClothSimulator m_Simulator;
 
   ezBoundingBox m_Bbox;
+  ezDynamicMeshBufferResourceHandle m_hDynamicMeshBuffer;
 };
