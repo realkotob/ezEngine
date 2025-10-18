@@ -3,6 +3,7 @@
 #include <EditorFramework/GUI/RawDocumentTreeWidget.moc.h>
 #include <GuiFoundation/ActionViews/QtProxy.moc.h>
 #include <GuiFoundation/Models/TreeSearchFilterModel.moc.h>
+#include <ToolsFoundation/Object/ObjectAccessorBase.h>
 
 ezQtDocumentTreeView::ezQtDocumentTreeView(QWidget* pParent)
   : ezQtItemView<QTreeView>(pParent)
@@ -18,6 +19,29 @@ ezQtDocumentTreeView::ezQtDocumentTreeView(QWidget* pParent, ezDocument* pDocume
   Initialize(pDocument, std::move(pModel), pSelection);
 }
 
+static bool GameObjectFilterFunc(QModelIndex index, const ezSearchPatternFilter& filter)
+{
+  if (const ezQtDocumentTreeModel* pModel = qobject_cast<const ezQtDocumentTreeModel*>(index.model()))
+  {
+    auto pObj = pModel->GetObject(index);
+    auto pAcc = pModel->GetDocumentTree()->GetDocument()->GetObjectAccessor();
+
+    ezVariant comp;
+
+    const ezInt32 iNum = pAcc->GetCountByName(pObj, "Components");
+    for (ezInt32 i = 0; i < iNum; ++i)
+    {
+      if (pAcc->GetValueByName(pObj, "Components", comp, i).Succeeded())
+      {
+        if (filter.PassesFilters(pAcc->GetObject(comp.Get<ezUuid>())->GetType()->GetTypeName()))
+          return true;
+      }
+    }
+  }
+
+  return false;
+}
+
 void ezQtDocumentTreeView::Initialize(ezDocument* pDocument, std::unique_ptr<ezQtDocumentTreeModel> pModel, ezSelectionManager* pSelection)
 {
   m_pDocument = pDocument;
@@ -31,6 +55,7 @@ void ezQtDocumentTreeView::Initialize(ezDocument* pDocument, std::unique_ptr<ezQ
 
   m_pFilterModel.reset(new ezQtTreeSearchFilterModel(this));
   m_pFilterModel->setSourceModel(m_pModel.get());
+  m_pFilterModel->SetCustomFilterFunc(GameObjectFilterFunc);
 
   setSelectionBehavior(QAbstractItemView::SelectionBehavior::SelectRows);
   setSelectionMode(QAbstractItemView::SelectionMode::ExtendedSelection);
