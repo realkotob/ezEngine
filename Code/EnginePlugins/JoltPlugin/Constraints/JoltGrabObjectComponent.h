@@ -42,7 +42,7 @@ public:
 
   /// \brief Checks whether there is an object nearby. Note that this function reports static and dynamic objects that are within reach.
   /// Whether these objects are interact able or not is up to the caller.
-  bool FindNearbyObject(ezGameObject*& out_pObject, ezTransform& out_localGrabPoint) const;
+  bool FindNearbyObject(ezGameObject*& out_pObject, ezTransform& out_localGrabPoint, bool bIgnoreGrabbedActor = true) const;
 
   /// \brief Grabs the given object at the given grab point if possible.
   bool GrabObject(ezGameObject* pObjectToGrab, const ezTransform& localGrabPoint);

@@ -92,7 +92,7 @@ void ezJoltGrabObjectComponent::DeserializeComponent(ezWorldReader& inout_stream
   m_hAttachTo = inout_stream.ReadGameObjectHandle();
 }
 
-bool ezJoltGrabObjectComponent::FindNearbyObject(ezGameObject*& out_pObject, ezTransform& out_localGrabPoint) const
+bool ezJoltGrabObjectComponent::FindNearbyObject(ezGameObject*& out_pObject, ezTransform& out_localGrabPoint, bool bIgnoreGrabbedActor /*= true*/) const
 {
   const ezPhysicsWorldModuleInterface* pPhysicsModule = GetWorld()->GetModuleReadOnly<ezPhysicsWorldModuleInterface>();
 
@@ -101,12 +101,21 @@ bool ezJoltGrabObjectComponent::FindNearbyObject(ezGameObject*& out_pObject, ezT
 
   auto pOwner = GetOwner();
 
-  ezPhysicsCastResult hit;
   ezPhysicsQueryParameters queryParam;
   queryParam.m_bIgnoreInitialOverlap = true;
   queryParam.m_uiCollisionLayer = m_uiCollisionLayer;
   queryParam.m_ShapeTypes = ezPhysicsShapeType::Static | ezPhysicsShapeType::Dynamic;
 
+  if (bIgnoreGrabbedActor)
+  {
+    const ezJoltDynamicActorComponent* pGrabbedActor = nullptr;
+    if (GetWorld()->TryGetComponent(m_hGrabbedActor, pGrabbedActor))
+    {
+      queryParam.m_uiIgnoreObjectFilterID = pGrabbedActor->GetObjectFilterID();
+    }
+  }
+
+  ezPhysicsCastResult hit;
   if (m_fCastRadius > 0.0f)
   {
     if (!pPhysicsModule->SweepTestSphere(hit, m_fCastRadius, pOwner->GetGlobalPosition(), pOwner->GetGlobalDirForwards().GetNormalized(), m_fMaxGrabPointDistance * 5.0f, queryParam))
