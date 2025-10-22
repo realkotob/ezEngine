@@ -93,6 +93,18 @@ void ezScriptMessageHandler::FillMessagePropertyValues(const ezMessage& msg, ezD
     {
       out_propertyValues.PushBack(ezReflectionUtils::GetMemberPropertyValue(static_cast<const ezAbstractMemberProperty*>(pProp), &msg));
     }
+    else if (pProp->GetCategory() == ezPropertyCategory::Array)
+    {
+      auto pArrayProp = static_cast<const ezAbstractArrayProperty*>(pProp);
+
+      ezVariantArray a;
+      for (ezUInt32 i = 0; i < pArrayProp->GetCount(&msg); ++i)
+      {
+        a.PushBack(ezReflectionUtils::GetArrayPropertyValue(pArrayProp, &msg, i));
+      }
+
+      out_propertyValues.PushBack(a);
+    }
     else
     {
       EZ_ASSERT_NOT_IMPLEMENTED;
