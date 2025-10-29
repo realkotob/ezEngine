@@ -140,10 +140,16 @@ ezResult ezStreamWriter::WriteQWordValue(const T* pQWordValue)
 
 #endif
 
-ezTypeVersion ezStreamReader::ReadVersion(ezTypeVersion expectedMaxVersion)
+ezTypeVersion ezStreamReader::ReadVersion()
 {
   ezTypeVersion v = 0;
   ReadWordValue(&v).IgnoreResult();
+  return v;
+}
+
+ezTypeVersion ezStreamReader::ReadVersion(ezTypeVersion expectedMaxVersion)
+{
+  ezTypeVersion v = ReadVersion();
 
   EZ_ASSERT_ALWAYS(v <= expectedMaxVersion, "Read version ({0}) is larger than expected max version ({1}).", v, expectedMaxVersion);
   EZ_ASSERT_ALWAYS(v > 0, "Invalid version.");

@@ -117,6 +117,7 @@ public:
     return uiBytesSkipped;
   }
 
+  EZ_ALWAYS_INLINE ezTypeVersion ReadVersion();
   EZ_ALWAYS_INLINE ezTypeVersion ReadVersion(ezTypeVersion expectedMaxVersion);
 };
 
