@@ -116,6 +116,7 @@ void ezAreaDamageComponent_PropertyMetaStateEventHandler(ezPropertyMetaStateEven
 void ezProjectileSurfaceInteraction_PropertyMetaStateEventHandler(ezPropertyMetaStateEvent& e);
 void ezOccluderComponent_PropertyMetaStateEventHandler(ezPropertyMetaStateEvent& e);
 void ezSplineNodeComponent_PropertyMetaStateEventHandler(ezPropertyMetaStateEvent& e);
+void ezLensFlareComponent_PropertyMetaStateEventHandler(ezPropertyMetaStateEvent& e);
 
 QImage SliderImageGenerator_LightTemperature(ezUInt32 uiWidth, ezUInt32 uiHeight, double fMinValue, double fMaxValue)
 {
@@ -237,6 +238,7 @@ void OnLoadPlugin()
   ezPropertyMetaState::GetSingleton()->m_Events.AddEventHandler(ezProjectileSurfaceInteraction_PropertyMetaStateEventHandler);
   ezPropertyMetaState::GetSingleton()->m_Events.AddEventHandler(ezOccluderComponent_PropertyMetaStateEventHandler);
   ezPropertyMetaState::GetSingleton()->m_Events.AddEventHandler(ezSplineNodeComponent_PropertyMetaStateEventHandler);
+  ezPropertyMetaState::GetSingleton()->m_Events.AddEventHandler(ezLensFlareComponent_PropertyMetaStateEventHandler);
 }
 
 void OnUnloadPlugin()
@@ -253,6 +255,8 @@ void OnUnloadPlugin()
   ezPropertyMetaState::GetSingleton()->m_Events.RemoveEventHandler(ezAreaDamageComponent_PropertyMetaStateEventHandler);
   ezPropertyMetaState::GetSingleton()->m_Events.RemoveEventHandler(ezProjectileSurfaceInteraction_PropertyMetaStateEventHandler);
   ezPropertyMetaState::GetSingleton()->m_Events.RemoveEventHandler(ezOccluderComponent_PropertyMetaStateEventHandler);
+  ezPropertyMetaState::GetSingleton()->m_Events.RemoveEventHandler(ezSplineNodeComponent_PropertyMetaStateEventHandler);
+  ezPropertyMetaState::GetSingleton()->m_Events.RemoveEventHandler(ezLensFlareComponent_PropertyMetaStateEventHandler);
 
 
   ezSelectionActions::UnregisterActions();
@@ -467,4 +471,17 @@ void ezSplineNodeComponent_PropertyMetaStateEventHandler(ezPropertyMetaStateEven
   auto& props = *e.m_pPropertyStates;
   props["CustomTangentIn"].m_Visibility = iTangentModeIn == ezSplineTangentMode::Custom ? ezPropertyUiState::Default : ezPropertyUiState::Invisible;
   props["CustomTangentOut"].m_Visibility = iTangentModeOut == ezSplineTangentMode::Custom ? ezPropertyUiState::Default : ezPropertyUiState::Invisible;
+}
+
+void ezLensFlareComponent_PropertyMetaStateEventHandler(ezPropertyMetaStateEvent& e)
+{
+  static const ezRTTI* pRtti = ezRTTI::FindTypeByName("ezLensFlareComponent");
+
+  if (e.m_pObject->GetTypeAccessor().GetType() != pRtti)
+    return;
+
+  const bool bLinkToLightShape = e.m_pObject->GetTypeAccessor().GetValue("LinkToLightShape").ConvertTo<bool>();
+
+  auto& props = *e.m_pPropertyStates;
+  props["LightColor"].m_Visibility = bLinkToLightShape ? ezPropertyUiState::Invisible : ezPropertyUiState::Default;
 }

@@ -86,12 +86,13 @@ ezResult ezLensFlareElement::Deserialize(ezStreamReader& inout_stream)
 //////////////////////////////////////////////////////////////////////////
 
 // clang-format off
-EZ_BEGIN_COMPONENT_TYPE(ezLensFlareComponent, 1, ezComponentMode::Static)
+EZ_BEGIN_COMPONENT_TYPE(ezLensFlareComponent, 2, ezComponentMode::Static)
 {
   EZ_BEGIN_PROPERTIES
   {
     EZ_ACCESSOR_PROPERTY("LinkToLightShape", GetLinkToLightShape, SetLinkToLightShape)->AddAttributes(new ezDefaultValueAttribute(true)),
     EZ_MEMBER_PROPERTY("Intensity", m_fIntensity)->AddAttributes(new ezClampValueAttribute(0.0f, ezVariant()), new ezDefaultValueAttribute(1.0f)),
+    EZ_MEMBER_PROPERTY("LightColor", m_LightColor),
     EZ_ACCESSOR_PROPERTY("OcclusionSampleRadius", GetOcclusionSampleRadius, SetOcclusionSampleRadius)->AddAttributes(new ezClampValueAttribute(0.0f, ezVariant()), new ezDefaultValueAttribute(0.1f), new ezSuffixAttribute(" m")),
     EZ_MEMBER_PROPERTY("OcclusionSampleSpread", m_fOcclusionSampleSpread)->AddAttributes(new ezClampValueAttribute(0.0f, 1.0f), new ezDefaultValueAttribute(0.5f)),
     EZ_MEMBER_PROPERTY("OcclusionDepthOffset", m_fOcclusionDepthOffset)->AddAttributes(new ezSuffixAttribute(" m")),
@@ -99,18 +100,19 @@ EZ_BEGIN_COMPONENT_TYPE(ezLensFlareComponent, 1, ezComponentMode::Static)
     EZ_ARRAY_MEMBER_PROPERTY("Elements", m_Elements)->AddAttributes(new ezClampValueAttribute(0.0f, ezVariant()), new ezDefaultValueAttribute(1.0f)),
   }
   EZ_END_PROPERTIES;
+  EZ_BEGIN_MESSAGEHANDLERS
+  {
+    EZ_MESSAGE_HANDLER(ezMsgSetColor, OnMsgSetColor),
+    EZ_MESSAGE_HANDLER(ezMsgExtractRenderData, OnMsgExtractRenderData),
+  }
+  EZ_END_MESSAGEHANDLERS;
   EZ_BEGIN_ATTRIBUTES
   {
     new ezCategoryAttribute("Rendering"),
     new ezSphereManipulatorAttribute("OcclusionSampleRadius"),
     new ezSphereVisualizerAttribute("OcclusionSampleRadius", ezColor::White)
   }
-  EZ_END_ATTRIBUTES;
-  EZ_BEGIN_MESSAGEHANDLERS
-  {
-    EZ_MESSAGE_HANDLER(ezMsgExtractRenderData, OnMsgExtractRenderData),
-  }
-  EZ_END_MESSAGEHANDLERS;
+  EZ_END_ATTRIBUTES;  
 }
 EZ_END_COMPONENT_TYPE;
 // clang-format on
@@ -140,6 +142,7 @@ void ezLensFlareComponent::SerializeComponent(ezWorldWriter& inout_stream) const
 
   s.WriteArray(m_Elements).IgnoreResult();
   s << m_fIntensity;
+  s << m_LightColor;
   s << m_fOcclusionSampleRadius;
   s << m_fOcclusionSampleSpread;
   s << m_fOcclusionDepthOffset;
@@ -151,12 +154,15 @@ void ezLensFlareComponent::DeserializeComponent(ezWorldReader& inout_stream)
 {
   SUPER::DeserializeComponent(inout_stream);
   const ezUInt32 uiVersion = inout_stream.GetComponentTypeVersion(GetStaticRTTI());
-  EZ_IGNORE_UNUSED(uiVersion);
 
   ezStreamReader& s = inout_stream.GetStream();
 
   s.ReadArray(m_Elements).IgnoreResult();
   s >> m_fIntensity;
+  if (uiVersion >= 2)
+  {
+    s >> m_LightColor;
+  }
   s >> m_fOcclusionSampleRadius;
   s >> m_fOcclusionSampleSpread;
   s >> m_fOcclusionDepthOffset;
@@ -226,6 +232,11 @@ void ezLensFlareComponent::FindLightComponent()
   }
 }
 
+void ezLensFlareComponent::OnMsgSetColor(ezMsgSetColor& ref_msg)
+{
+  ref_msg.ModifyColor(m_LightColor);
+}
+
 void ezLensFlareComponent::OnMsgExtractRenderData(ezMsgExtractRenderData& msg) const
 {
   // Don't render in shadow and reflection views
@@ -250,6 +261,10 @@ void ezLensFlareComponent::OnMsgExtractRenderData(ezMsgExtractRenderData& msg) c
   {
     lightColor = pLightComponent->GetLightColor();
     lightColor *= pLightComponent->GetIntensity() * 0.1f;
+  }
+  else
+  {
+    lightColor = m_LightColor;
   }
 
   float fFade = 1.0f;

@@ -96,6 +96,9 @@ public:
   /// \brief Adjusts the overall intensity of the lens flare
   float m_fIntensity = 1.0f; // [ property ]
 
+  /// \brief Fallback color if the lens flare is not linked to a light component.
+  ezColorGammaUB m_LightColor = ezColor::White; // [ property ]
+
   /// \brief Link the lens flare to the first light component on the same owner object or any of its parent objects.
   ///
   /// When a lens flare is linked it will take the light color and intensity to modulate the lens flare color and intensity
@@ -125,6 +128,7 @@ public:
 private:
   void FindLightComponent();
 
+  void OnMsgSetColor(ezMsgSetColor& ref_msg);
   void OnMsgExtractRenderData(ezMsgExtractRenderData& msg) const;
 
   float m_fOcclusionSampleRadius = 0.1f;
