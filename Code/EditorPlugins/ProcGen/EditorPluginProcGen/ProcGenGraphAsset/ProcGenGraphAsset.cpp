@@ -82,8 +82,25 @@ struct ezProcGenGraphAssetDocument::GenerateContext
 
 ////////////////////////////////////////////////////////////////
 
-EZ_BEGIN_DYNAMIC_REFLECTED_TYPE(ezProcGenGraphAssetDocument, 8, ezRTTINoAllocator)
+// clang-format off
+EZ_BEGIN_DYNAMIC_REFLECTED_TYPE(ezProcGenGraphAssetProperties, 1, ezRTTIDefaultAllocator<ezProcGenGraphAssetProperties>)
+  {
+    EZ_BEGIN_PROPERTIES
+    {
+      EZ_MEMBER_PROPERTY("DebugPrefab", m_sDebugPrefab)->AddAttributes(new ezDefaultValueAttribute(ezStringView(s_szSphereAssetId)), new ezAssetBrowserAttribute("CompatibleAsset_Prefab", ezDependencyFlags::None)),
+      EZ_MEMBER_PROPERTY("DebugFootprint", m_fDebugFootprint)->AddAttributes(new ezDefaultValueAttribute(1.0f), new ezClampValueAttribute(0.0f, ezVariant())),
+      EZ_MEMBER_PROPERTY("DebugAlignToNormal", m_fDebugAlignToNormal)->AddAttributes(new ezDefaultValueAttribute(1.0f), new ezClampValueAttribute(0.0f, 1.0f)),
+      EZ_MEMBER_PROPERTY("DebugColorGradient", m_sDebugColorGradient)->AddAttributes(new ezDefaultValueAttribute(ezStringView(s_szBWGradientAssetId)), new ezAssetBrowserAttribute("CompatibleAsset_Data_Gradient", ezDependencyFlags::None)),
+      EZ_ENUM_MEMBER_PROPERTY("DebugPlacementPattern", ezProcPlacementPattern, m_DebugPlacementPattern)->AddAttributes(new ezDefaultValueAttribute(ezProcPlacementPattern::RegularGrid)),
+      EZ_MEMBER_PROPERTY("DebugSurface", m_sDebugSurface)->AddAttributes(new ezAssetBrowserAttribute("CompatibleAsset_Surface", ezDependencyFlags::None)),
+    }
+    EZ_END_PROPERTIES;
+  }
 EZ_END_DYNAMIC_REFLECTED_TYPE;
+
+EZ_BEGIN_DYNAMIC_REFLECTED_TYPE(ezProcGenGraphAssetDocument, 9, ezRTTINoAllocator)
+EZ_END_DYNAMIC_REFLECTED_TYPE;
+// clang-format on
 
 ezProcGenGraphAssetDocument::ezProcGenGraphAssetDocument(ezStringView sDocumentPath)
   : ezAssetDocument(sDocumentPath, EZ_DEFAULT_NEW(ezProcGenNodeManager), ezAssetDocEngineConnection::None)
@@ -96,7 +113,7 @@ void ezProcGenGraphAssetDocument::SetDebugPin(const ezPin* pDebugPin)
 
   if (m_pDebugPin != nullptr)
   {
-    CreateDebugNode();
+    UpdateDebugNode();
   }
 
   ezDocumentObjectPropertyEvent e;
@@ -104,6 +121,26 @@ void ezProcGenGraphAssetDocument::SetDebugPin(const ezPin* pDebugPin)
   e.m_sProperty = "DebugPin";
 
   GetObjectManager()->m_PropertyEvents.Broadcast(e);
+}
+
+void ezProcGenGraphAssetDocument::UpdateDebugNode()
+{
+  m_pDebugNode.Clear();
+
+  auto pPropertiesObject = GetObjectManager()->GetRootObject()->GetChildren()[0];
+  if (pPropertiesObject->GetType() != ezGetStaticRTTI<ezProcGenGraphAssetProperties>())
+    return;
+
+  auto& typeAccessor = pPropertiesObject->GetTypeAccessor();
+
+  m_pDebugNode = EZ_DEFAULT_NEW(ezProcGen_PlacementOutput);
+  m_pDebugNode->m_sName = "Debug";
+  m_pDebugNode->m_ObjectsToPlace.PushBack(typeAccessor.GetValue("DebugPrefab").ConvertTo<ezString>());
+  m_pDebugNode->m_fFootprint = typeAccessor.GetValue("DebugFootprint").ConvertTo<float>();
+  m_pDebugNode->m_fAlignToNormal = typeAccessor.GetValue("DebugAlignToNormal").ConvertTo<float>();
+  m_pDebugNode->m_sColorGradient = typeAccessor.GetValue("DebugColorGradient").ConvertTo<ezString>();
+  m_pDebugNode->m_PlacementPattern = static_cast<ezProcPlacementPattern::Enum>(typeAccessor.GetValue("DebugPlacementPattern").ConvertTo<ezUInt32>());
+  m_pDebugNode->m_sSurface = typeAccessor.GetValue("DebugSurface").ConvertTo<ezString>();
 }
 
 ezStatus ezProcGenGraphAssetDocument::WriteAsset(ezStreamWriter& inout_stream, const ezPlatformProfile* pAssetProfile, bool bAllowDebug) const
@@ -114,7 +151,7 @@ ezStatus ezProcGenGraphAssetDocument::WriteAsset(ezStreamWriter& inout_stream, c
   ezDynamicArray<const ezDocumentObject*> vertexColorNodes;
   GetAllOutputNodes(placementNodes, vertexColorNodes);
 
-  const bool bDebug = bAllowDebug && (m_pDebugPin != nullptr);
+  const bool bDebug = bAllowDebug && (m_pDebugPin != nullptr) && (m_pDebugNode != nullptr);
 
   ezStringDeduplicationWriteContext stringDedupContext(inout_stream);
 
@@ -166,7 +203,7 @@ ezStatus ezProcGenGraphAssetDocument::WriteAsset(ezStreamWriter& inout_stream, c
   };
 
   {
-    chunk.BeginChunk("PlacementOutputs", 8);
+    chunk.BeginChunk("PlacementOutputs", 9);
 
     if (!bDebug)
     {
@@ -179,7 +216,7 @@ ezStatus ezProcGenGraphAssetDocument::WriteAsset(ezStreamWriter& inout_stream, c
         auto pPGNode = context.m_DocObjToProcGenNodeTable.GetValue(pPlacementNode);
         auto pPlacementOutput = ezStaticCast<ezProcGen_PlacementOutput*>(pPGNode->Borrow());
 
-        pPlacementOutput->m_VolumeTagSetIndices = context.m_GraphContext.m_VolumeTagSetIndices;
+        pPlacementOutput->CopyValuesFromContext(context.m_GraphContext);
         pPlacementOutput->Save(chunk);
       }
     }
@@ -189,6 +226,7 @@ ezStatus ezProcGenGraphAssetDocument::WriteAsset(ezStreamWriter& inout_stream, c
       chunk << uiNumNodes;
 
       context.m_GraphContext.m_VolumeTagSetIndices.Clear();
+      context.m_GraphContext.m_CurveIndices.Clear();
       context.m_GraphContext.m_OutputType = ezProcGenNodeBase::GraphContext::Placement;
 
       ezExpressionAST ast;
@@ -203,7 +241,7 @@ ezStatus ezProcGenGraphAssetDocument::WriteAsset(ezStreamWriter& inout_stream, c
 
       EZ_SUCCEED_OR_RETURN(byteCode.Save(chunk));
 
-      m_pDebugNode->m_VolumeTagSetIndices = context.m_GraphContext.m_VolumeTagSetIndices;
+      m_pDebugNode->CopyValuesFromContext(context.m_GraphContext);
       m_pDebugNode->Save(chunk);
     }
 
@@ -211,7 +249,7 @@ ezStatus ezProcGenGraphAssetDocument::WriteAsset(ezStreamWriter& inout_stream, c
   }
 
   {
-    chunk.BeginChunk("VertexColorOutputs", 2);
+    chunk.BeginChunk("VertexColorOutputs", 3);
 
     chunk << vertexColorNodes.GetCount();
 
@@ -222,7 +260,7 @@ ezStatus ezProcGenGraphAssetDocument::WriteAsset(ezStreamWriter& inout_stream, c
       auto pPGNode = context.m_DocObjToProcGenNodeTable.GetValue(pVertexColorNode);
       auto pVertexColorOutput = ezStaticCast<ezProcGen_VertexColorOutput*>(pPGNode->Borrow());
 
-      pVertexColorOutput->m_VolumeTagSetIndices = context.m_GraphContext.m_VolumeTagSetIndices;
+      pVertexColorOutput->CopyValuesFromContext(context.m_GraphContext);
       pVertexColorOutput->Save(chunk);
     }
 
@@ -241,6 +279,18 @@ ezStatus ezProcGenGraphAssetDocument::WriteAsset(ezStreamWriter& inout_stream, c
   EZ_SUCCEED_OR_RETURN(stringDedupContext.End());
 
   return ezStatus(EZ_SUCCESS);
+}
+
+void ezProcGenGraphAssetDocument::InitializeAfterLoading(bool bFirstTimeCreation)
+{
+  auto pRoot = this->GetObjectManager()->GetRootObject();
+  if (pRoot->GetChildren().IsEmpty() == false && pRoot->GetChildren()[0]->GetType() != ezGetStaticRTTI<ezProcGenGraphAssetProperties>())
+  {
+    ezDocumentObject* pObject = this->GetObjectManager()->CreateObject(ezGetStaticRTTI<ezProcGenGraphAssetProperties>());
+    this->GetObjectManager()->AddObject(pObject, pRoot, "Children", 0);
+  }
+
+  SUPER::InitializeAfterLoading(bFirstTimeCreation);
 }
 
 void ezProcGenGraphAssetDocument::UpdateAssetDocumentInfo(ezAssetDocumentInfo* pInfo) const
@@ -517,16 +567,4 @@ void ezProcGenGraphAssetDocument::DumpSelectedOutput(bool bAst, bool bDisassembl
       ezLog::Error("Failed to dump Disassembly to: {0}", sFileName);
     }
   }
-}
-
-void ezProcGenGraphAssetDocument::CreateDebugNode()
-{
-  if (m_pDebugNode != nullptr)
-    return;
-
-  m_pDebugNode = EZ_DEFAULT_NEW(ezProcGen_PlacementOutput);
-  m_pDebugNode->m_sName = "Debug";
-  m_pDebugNode->m_ObjectsToPlace.PushBack(s_szSphereAssetId);
-  m_pDebugNode->m_sColorGradient = s_szBWGradientAssetId;
-  m_pDebugNode->m_PlacementPattern = ezProcPlacementPattern::RegularGrid;
 }

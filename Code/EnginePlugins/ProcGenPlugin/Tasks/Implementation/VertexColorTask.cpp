@@ -34,6 +34,7 @@ VertexColorTask::VertexColorTask()
 {
   m_VM.RegisterFunction(ezProcGenExpressionFunctions::s_ApplyVolumesFunc);
   m_VM.RegisterFunction(ezProcGenExpressionFunctions::s_GetInstanceSeedFunc);
+  m_VM.RegisterFunction(ezProcGenExpressionFunctions::s_SampleCurveFunc);
 }
 
 VertexColorTask::~VertexColorTask() = default;
@@ -121,12 +122,13 @@ void VertexColorTask::Prepare(const ezWorld& world, const ezMeshBufferResourceDe
   {
     if (pOutput != nullptr)
     {
-      ezProcGenInternal::ExtractVolumeCollections(world, box, *pOutput, m_VolumeCollections, m_GlobalData);
+      ezProcGenGlobalData::ExtractVolumeCollections(world, box, *pOutput, m_VolumeCollections, m_GlobalData);
+      ezProcGenGlobalData::SetCurves(*pOutput, m_GlobalData);
     }
   }
 
   const ezUInt32 uiTransformHash = ezHashingUtils::xxHash32(&transform, sizeof(ezTransform));
-  ezProcGenInternal::SetInstanceSeed(uiTransformHash, m_GlobalData);
+  ezProcGenGlobalData::SetInstanceSeed(uiTransformHash, m_GlobalData);
 }
 
 void VertexColorTask::Execute()

@@ -8,11 +8,15 @@ struct EZ_PROCGENPLUGIN_DLL ezProcGenExpressionFunctions
 {
   static ezExpressionFunction s_ApplyVolumesFunc;
   static ezExpressionFunction s_GetInstanceSeedFunc;
+  static ezExpressionFunction s_SampleCurveFunc;
 };
 
-namespace ezProcGenInternal
+class EZ_PROCGENPLUGIN_DLL ezProcGenGlobalData
 {
-  void ExtractVolumeCollections(const ezWorld& world, const ezBoundingBox& box, const Output& output, ezDeque<ezVolumeCollection>& ref_volumeCollections, ezExpression::GlobalData& ref_globalData);
+public:
+  static void ExtractVolumeCollections(const ezWorld& world, const ezBoundingBox& box, const ezProcGenInternal::Output& output, ezDeque<ezVolumeCollection>& ref_volumeCollections, ezExpression::GlobalData& ref_globalData);
 
-  void SetInstanceSeed(ezUInt32 uiSeed, ezExpression::GlobalData& ref_globalData);
-} // namespace ezProcGenInternal
+  static void SetInstanceSeed(ezUInt32 uiSeed, ezExpression::GlobalData& ref_globalData);
+
+  static void SetCurves(const ezProcGenInternal::Output& output, ezExpression::GlobalData& ref_globalData);
+};
