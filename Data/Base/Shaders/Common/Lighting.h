@@ -759,7 +759,7 @@ void ApplyDecals(inout ezMaterialData matData, ezPerClusterData clusterData, uin
         float3 decalORM = DecalAtlasORMTexture.SampleGrad(DecalAtlasSampler, ormAtlasUv, ormAtlasDdx, ormAtlasDdy).rgb;
 
         matData.occlusion = lerp(matData.occlusion, decalORM.r, fade);
-        matData.roughness = lerp(matData.roughness, decalORM.g, fade);
+        matData.perceptualRoughness = lerp(matData.perceptualRoughness, decalORM.g, fade);
         decalMetallic = decalORM.b;
       }
 
@@ -795,6 +795,7 @@ void ApplyDecals(inout ezMaterialData matData, ezPerClusterData clusterData, uin
   }
 
   matData.worldNormal = normalize(matData.worldNormal);
+  matData.roughness = RoughnessFromPerceptualRoughness(matData.perceptualRoughness);
 }
 
 float4 CalculateRefraction(float3 worldPosition, float3 worldNormal, float IoR, float thickness, float3 tintColor, float newOpacity = 1.0f)
