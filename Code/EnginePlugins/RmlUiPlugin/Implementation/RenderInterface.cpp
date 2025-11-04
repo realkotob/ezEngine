@@ -483,6 +483,10 @@ namespace ezRmlUiInternal
       pRenderContext->EndRendering();
 
       pCommandEncoder->ResolveTexture(pCommandBuffer->m_hTargetTexture, ezGALTextureSubresource(), hTempTarget, ezGALTextureSubresource());
+      if (textureDesc.m_uiMipLevelCount > 1 && textureDesc.m_bAllowDynamicMipGeneration)
+      {
+        pCommandEncoder->GenerateMipMaps(pCommandBuffer->m_hTargetTexture, ezGALTextureRange::MakeFromMipRange());
+      }
 
       pGpuResourcePool->ReturnRenderTarget(hTempTarget);
       pGpuResourcePool->ReturnRenderTarget(hTempStencil);
