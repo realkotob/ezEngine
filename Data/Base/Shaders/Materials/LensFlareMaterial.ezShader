@@ -158,7 +158,7 @@ VS_OUT main(uint VertexID : SV_VertexID, uint InstanceID : SV_InstanceID)
   if (data.MaxScreenSize > 0.0)
   {
     float screenAspectRatio = screenSize.y / screenSize.x;
-    screenSize.x = SmoothMin(screenSize.x, data.MaxScreenSize, 1);
+    screenSize.x = min(screenSize.x, data.MaxScreenSize);
     screenSize.y = screenSize.x * screenAspectRatio;
   }
 
