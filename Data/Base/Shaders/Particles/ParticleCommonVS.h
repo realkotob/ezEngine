@@ -13,7 +13,7 @@
 #  error "Unknown shading quality configuration."
 #endif
 
-static float2 QuadTexCoords[6] =
+static float2 QuadPosOffsets[6] =
   {
     float2(0.0, 0.0),
     float2(1.0, 0.0),
@@ -21,7 +21,27 @@ static float2 QuadTexCoords[6] =
     float2(0.0, 0.0),
     float2(1.0, 1.0),
     float2(0.0, 1.0),
-};
+  };
+
+static float2 QuadTexCoordsBillboard[6] =
+  {
+    float2(1.0, 0.0),
+    float2(1.0, 1.0),
+    float2(0.0, 1.0),
+    float2(1.0, 0.0),
+    float2(0.0, 1.0),
+    float2(0.0, 0.0),
+  };
+
+static float2 QuadTexCoordsAxisAligned[6] =
+  {
+    float2(0.0, 1.0),
+    float2(1.0, 1.0),
+    float2(1.0, 0.0),
+    float2(0.0, 1.0),
+    float2(1.0, 0.0),
+    float2(0.0, 0.0),
+  };
 
 uint CalcQuadParticleDataIndex(uint VertexID)
 {
@@ -42,8 +62,8 @@ struct Quad
 
 Quad CalcQuadOutputPositionWithTangents(uint vertexIndex, float3 inPosition, float3 inTangentX, float3 inTangentZ, float inSize)
 {
-  float3 offsetRight = inTangentX * ((QuadTexCoords[vertexIndex].x - 0.5) * inSize);
-  float3 offsetUp = inTangentZ * ((QuadTexCoords[vertexIndex].y - 0.5) * -inSize);
+  float3 offsetRight = inTangentX * ((QuadPosOffsets[vertexIndex].x - 0.5) * inSize);
+  float3 offsetUp = inTangentZ * ((QuadPosOffsets[vertexIndex].y - 0.5) * -inSize);
 
   Quad quad;
   quad.worldPosition = mul(ObjectToWorldMatrix, float4(inPosition + offsetRight + offsetUp, 1));
@@ -65,8 +85,8 @@ Quad CalcQuadOutputPositionWithAlignedAxis(uint vertexIndex, float3 inPosition, 
   float3 axisDir = normalize(inTangentXws);
   float3 orthoDir = normalize(cross(inTangentXws, GetCameraDirForwards()));
 
-  float3 offsetRight = orthoDir * ((QuadTexCoords[vertexIndex].x - 0.5) * inSize);
-  float3 offsetUp = axisDir * ((1.0 - QuadTexCoords[vertexIndex].y) * inSize * stretch);
+  float3 offsetRight = orthoDir * ((QuadPosOffsets[vertexIndex].x - 0.5) * inSize);
+  float3 offsetUp = axisDir * ((1.0 - QuadPosOffsets[vertexIndex].y) * inSize * stretch);
 
   Quad quad;
   quad.worldPosition = mul(ObjectToWorldMatrix, float4(inPosition, 1));
@@ -86,7 +106,7 @@ Quad CalcQuadOutputPositionAsBillboard(uint vertexIndex, float3 inPosition, floa
   sincos(rotationOffset + rotationSpeed * TotalEffectLifeTime, angles.x, angles.y);
   float2x2 rotation = {angles.x, -angles.y, angles.y, angles.x};
 
-  float2 quadCorners = mul(rotation, QuadTexCoords[vertexIndex] - 0.5);
+  float2 quadCorners = mul(rotation, QuadPosOffsets[vertexIndex] - 0.5);
 
   float3 offsetRight = GetCameraDirRight() * (quadCorners.x * inSize);
   float3 offsetUp = GetCameraDirUp() * (quadCorners.y * -inSize);

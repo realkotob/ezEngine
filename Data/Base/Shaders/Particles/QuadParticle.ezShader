@@ -97,7 +97,12 @@ VS_OUT main(uint VertexID : SV_VertexID, uint InstanceID : SV_InstanceID)
   ret.Position = quad.screenPosition;
 
   float fVariation = (baseParticle.Variation & 255) / 255.0;
-  ret.TexCoord0 = ComputeAtlasTexCoordRandomAnimated(QuadTexCoords[vertexIndex], TextureAtlasVariationFramesX, TextureAtlasVariationFramesY, fVariation, TextureAtlasFlipbookFramesX, TextureAtlasFlipbookFramesY, 1.0f - particleLife);
+
+#if PARTICLE_QUAD_MODE == PARTICLE_QUAD_MODE_AXIS_ALIGNED
+  ret.TexCoord0 = ComputeAtlasTexCoordRandomAnimated(QuadTexCoordsAxisAligned[vertexIndex], TextureAtlasVariationFramesX, TextureAtlasVariationFramesY, fVariation, TextureAtlasFlipbookFramesX, TextureAtlasFlipbookFramesY, 1.0f - particleLife);
+#else
+  ret.TexCoord0 = ComputeAtlasTexCoordRandomAnimated(QuadTexCoordsBillboard[vertexIndex], TextureAtlasVariationFramesX, TextureAtlasVariationFramesY, fVariation, TextureAtlasFlipbookFramesX, TextureAtlasFlipbookFramesY, 1.0f - particleLife);
+#endif
 
 #if PARTICLE_LIGHTING_MODE == PARTICLE_LIGHTING_MODE_VERTEX_LIT
   float3 diffuseLight = CalculateParticleLighting(quad.screenPosition, quad.worldPosition, quad.normal);
