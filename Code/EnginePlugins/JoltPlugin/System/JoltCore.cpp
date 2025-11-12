@@ -222,6 +222,9 @@ void ezJoltCore::Startup()
   s_pDebugRenderer = std::make_unique<ezJoltDebugRenderer>();
 #endif
 
+  // do this once here to prevent a race condition later
+  GetJoltJobSystem();
+
   ezSurfaceResource::s_Events.AddEventHandler(&ezJoltCore::SurfaceResourceEventHandler);
 }
 
