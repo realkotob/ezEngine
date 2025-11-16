@@ -5,13 +5,13 @@
 #include <Foundation/Memory/MemoryUtils.h>
 #include <Foundation/Strings/StringConversion.h>
 
-#include <spirv_reflect.h>
+#include <SPIRV-Reflect/spirv_reflect.h>
 
 #if EZ_ENABLED(EZ_PLATFORM_WINDOWS)
 #  include <d3dcompiler.h>
 #endif
 
-#include <dxc/dxcapi.h>
+#include <dxcapi.h>
 
 template <typename T>
 struct ezComPtr
