@@ -1,11 +1,11 @@
 /* Styles for progress bar and gauge elements. */
 
-progressbar {
+progress {
 	display: block;
 	decorator: tiled-horizontal(progress-l, progress-c, progress-r);
 }
 
-progressbar fill {
+progress fill {
 	decorator: tiled-horizontal(progress-fill-l, progress-fill-c, progress-fill-r);
 }
 
