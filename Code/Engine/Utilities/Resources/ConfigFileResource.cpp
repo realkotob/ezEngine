@@ -206,6 +206,10 @@ ezResourceLoadData ezConfigFileResourceLoader::OpenDataStream(const ezResource* 
   // used to gather all the transitive file dependencies
   preprop.SetFileLocatorFunction(ezMakeDelegate(&ezConfigFileResourceLoader::LoadedData::PrePropFileLocator, pData));
 
+  ezLogSystemToBuffer errorBuffer;
+  errorBuffer.SetLogLevel(ezLogMsgType::WarningMsg);
+  preprop.SetLogInterface(&errorBuffer);
+
   if (pResource->GetResourceID() == "Empty.ezConfig")
   {
     // do nothing
@@ -336,6 +340,8 @@ ezResourceLoadData ezConfigFileResourceLoader::OpenDataStream(const ezResource* 
   }
   else
   {
+    EZ_LOG_BLOCK("Invalid Config File", pResource->GetResourceIdOrDescription());
+    ezLog::Error(errorBuffer.m_sBuffer);
     // empty stream
     return {};
   }
