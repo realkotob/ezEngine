@@ -38,13 +38,13 @@ public:
   ///
   /// The user data can be used to store additional information, typically the owner of the allocation, like e.g. a component handle.
   template <typename U>
-  ezUInt32 Allocate(const U& userData, ezUInt32 uiCount = 1, ezBitflags<AllocateFlags> allocateFlags = AllocateFlags::None)
+  ezUInt32 Allocate(const U& userData, ezUInt32 uiCount = 1, ezBitflags<AllocateFlags> allocateFlags = AllocateFlags::None, ezAllocator* pTempAllocator = nullptr)
   {
     static_assert(sizeof(U) <= sizeof(ezUInt64), "userData is too large");
     ezUInt64 uiUserData = 0;
     *reinterpret_cast<U*>(&uiUserData) = userData;
 
-    return Allocate(uiUserData, uiCount, allocateFlags);
+    return Allocate(uiUserData, uiCount, allocateFlags, pTempAllocator);
   }
 
   /// \brief Removes an allocation at the given offset. The offset must have been returned by Allocate.
@@ -59,6 +59,25 @@ public:
     ezByteArrayPtr byteData = MapForWriting(uiOffset, uiCount);
     EZ_ASSERT_DEBUG(sizeof(T) == m_Desc.m_uiStructSize, "Invalid Type");
     return ezArrayPtr<T>(reinterpret_cast<T*>(byteData.GetPtr()), uiCount);
+  }
+
+  /// \brief Maps a range of bytes for writing.
+  ezByteArrayPtr MapBytesForWriting(ezUInt32 uiOffset)
+  {
+    ezUInt32 uiCount = 0;
+    ezByteArrayPtr byteData = MapForWriting(uiOffset, uiCount);
+    EZ_ASSERT_DEBUG(byteData.GetCount() == uiCount * m_Desc.m_uiStructSize, "Implementation error");
+    return byteData;
+  }
+
+  /// \brief Maps a range of elements for reading.
+  template <typename T>
+  ezArrayPtr<const T> MapForReading(ezUInt32 uiOffset) const
+  {
+    ezUInt32 uiCount = 0;
+    ezConstByteArrayPtr byteData = MapForReading(uiOffset, uiCount);
+    EZ_ASSERT_DEBUG(sizeof(T) == m_Desc.m_uiStructSize, "Invalid Type");
+    return ezArrayPtr<const T>(reinterpret_cast<const T*>(byteData.GetPtr()), uiCount);
   }
 
   /// \brief Upload all changed data to the GPU buffer for the next rendering frame, aka the next time BeginFrame is called on the GALDevice.
@@ -80,10 +99,13 @@ public:
   ///
   /// It is ensured that it will always return the same buffer until the next time BeginFrame is called on the GALDevice even if the buffer
   /// has been resized due to more allocations on the game play or extraction side.
-  const ezGALBufferHandle& GetBufferForRendering() const
-  {
-    return m_hBufferForRendering;
-  }
+  const ezGALBufferHandle& GetBufferForRendering() const { return m_hBufferForRendering; }
+
+  /// \brief Returns the description that was used to create this dynamic buffer.
+  const ezGALBufferCreationDescription& GetDescription() const { return m_Desc; }
+
+  /// \brief Returns the debug name that was used to create this dynamic buffer.
+  ezStringView GetDebugName() const { return m_sDebugName; }
 
 private:
   friend class ezMemoryUtils;
@@ -95,25 +117,39 @@ private:
   void Initialize(const ezGALBufferCreationDescription& desc, ezStringView sDebugName);
   void Deinitialize();
 
-  ezUInt32 Allocate(ezUInt64 uiUserData, ezUInt32 uiCount, ezBitflags<AllocateFlags> allocateFlags);
+  ezUInt32 Allocate(ezUInt64 uiUserData, ezUInt32 uiCount, ezBitflags<AllocateFlags> allocateFlags, ezAllocator* pTempAllocator);
   ezByteArrayPtr MapForWriting(ezUInt32 uiOffset, ezUInt32& out_uiCount);
+  ezConstByteArrayPtr MapForReading(ezUInt32 uiOffset, ezUInt32& out_uiCount) const;
 
-  void Resize(ezUInt32 uiNewSize);
+  ezUInt32 AllocateTempData(ezUInt32 uiStartOffset, ezUInt32 uiNewCount, ezAllocator* pTempAllocator);
 
   void SwapBuffers()
   {
     m_hBufferForRendering = m_hBufferForUpload;
   }
 
-  ezMutex m_Mutex;
+  mutable ezMutex m_Mutex;
+
+  ezUInt32 m_uiCapacity = 0;   ///< in number of elements
+  ezUInt32 m_uiNextOffset = 0; ///< in number of elements
 
   ezDynamicArray<ezUInt8, ezAlignedAllocatorWrapper> m_Data;
-  ezUInt32 m_uiNextOffset = 0;
+
+  struct TempData
+  {
+    ezAllocator* m_pAllocator = nullptr;
+    ezUInt8* m_pData = nullptr;
+    ezUInt32 m_uiStartByteOffset = 0;
+    ezUInt32 m_uiByteSize = 0;
+  };
+
+  ezSmallArray<TempData, 2> m_TempData;
 
   struct Allocation
   {
     ezUInt64 m_uiUserData = 0;
     ezUInt32 m_uiCount = 0;
+    ezUInt32 m_uiDataIndex = 0; ///< 0 is full buffer, greater than 0 are temp buffers
   };
 
   ezMap<ezUInt32, Allocation> m_Allocations;
@@ -126,8 +162,10 @@ private:
   ezGALBufferHandle m_hBufferForUpload;
   ezGALBufferHandle m_hBufferForRendering;
 
-#if EZ_ENABLED(EZ_COMPILE_FOR_DEVELOPMENT)
   ezString m_sDebugName;
+
+#if EZ_ENABLED(EZ_COMPILE_FOR_DEBUG)
+  void CheckSelf() const;
 #endif
 };
 

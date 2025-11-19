@@ -5,6 +5,7 @@
 #endif
 
 #define USE_WORLDPOS
+#define USE_DATAOFFSETS
 
 #if (BLEND_MODE == BLEND_MODE_MASKED || BLEND_MODE == BLEND_MODE_DITHERED) && RENDER_PASS != RENDER_PASS_WIREFRAME
 
@@ -298,7 +299,10 @@ PS_OUT main(PS_IN Input)
   }
 
 #elif (RENDER_PASS == RENDER_PASS_PICKING || RENDER_PASS == RENDER_PASS_PICKING_WIREFRAME)
-  Output.Color = RGBA8ToFloat4(gameObjectId);
+  uint fullId = gameObjectId & 0x80FFFFFF;
+  fullId |= Input.DataOffsets.z & 0x7F000000; // material slot index in bits 24-30
+
+  Output.Color = RGBA8ToFloat4(fullId);
 
 #elif RENDER_PASS == RENDER_PASS_DEPTH_ONLY
 

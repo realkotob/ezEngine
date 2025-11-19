@@ -4,6 +4,7 @@
 #include <Core/WorldSerializer/WorldReader.h>
 #include <Core/WorldSerializer/WorldWriter.h>
 #include <RendererCore/Components/SkyBoxComponent.h>
+#include <RendererCore/Pipeline/RenderDataManager.h>
 #include <RendererCore/Pipeline/View.h>
 #include <RendererCore/Textures/TextureCubeResource.h>
 
@@ -81,6 +82,21 @@ void ezSkyBoxComponent::Initialize()
   UpdateMaterials();
 }
 
+void ezSkyBoxComponent::OnActivated()
+{
+  SUPER::OnActivated();
+
+  UpdateMaterials();
+}
+
+void ezSkyBoxComponent::OnDeactivated()
+{
+  ezRenderDataManager* pRenderDataManager = GetWorld()->GetModule<ezRenderDataManager>();
+  pRenderDataManager->DeleteInstanceData(m_InstanceDataOffset);
+
+  SUPER::OnDeactivated();
+}
+
 ezResult ezSkyBoxComponent::GetLocalBounds(ezBoundingBoxSphere& ref_bounds, bool& ref_bAlwaysVisible, ezMsgUpdateLocalBounds& ref_msg)
 {
   ref_bAlwaysVisible = true;
@@ -93,20 +109,15 @@ void ezSkyBoxComponent::OnMsgExtractRenderData(ezMsgExtractRenderData& msg) cons
   if (msg.m_OverrideCategory != ezInvalidRenderDataCategory || msg.m_pView->GetCamera()->IsOrthographic())
     return;
 
-  ezMeshRenderData* pRenderData = ezCreateRenderDataForThisFrame<ezMeshRenderData>(GetOwner());
-  {
-    pRenderData->m_GlobalTransform = GetOwner()->GetGlobalTransform();
-    pRenderData->m_GlobalTransform.m_vPosition.SetZero(); // skybox should always be at the origin
-    pRenderData->m_GlobalBounds = GetOwner()->GetGlobalBounds();
-    pRenderData->m_hMesh = m_hMesh;
-    pRenderData->m_hMaterial = m_hCubeMapMaterial;
-    pRenderData->m_uiSubMeshIndex = 0;
-    pRenderData->m_uiUniqueID = GetUniqueIdForRendering();
+  const bool bDynamic = GetOwner()->IsDynamic();
+  ezTransform globalTransform = GetOwner()->GetGlobalTransform();
+  globalTransform.m_vPosition.SetZero(); // skybox should always be at the origin
+  auto hInstanceDataBuffer = msg.m_pRenderDataManager->GetOrCreateInstanceDataAndFill(*this, bDynamic, globalTransform, m_InstanceDataOffset, GetUniqueIdForRendering());
 
-    pRenderData->FillSortingKey();
-  }
+  ezMeshRenderData* pRenderData = msg.m_pRenderDataManager->CreateRenderDataForThisFrame<ezMeshRenderData>(GetOwner());
+  pRenderData->Fill(m_InstanceDataOffset, hInstanceDataBuffer, m_hCubeMapMaterial, m_hMesh);
 
-  msg.AddRenderData(pRenderData, ezDefaultRenderDataCategories::Sky, ezRenderData::Caching::Never);
+  msg.AddRenderData(pRenderData, ezDefaultRenderDataCategories::Sky, ezRenderData::Caching::IfStatic);
 }
 
 void ezSkyBoxComponent::SerializeComponent(ezWorldWriter& inout_stream) const
@@ -188,13 +199,6 @@ void ezSkyBoxComponent::SetCubeMap(const ezTextureCubeResourceHandle& hCubeMap)
 const ezTextureCubeResourceHandle& ezSkyBoxComponent::GetCubeMap() const
 {
   return m_hCubeMap;
-}
-
-void ezSkyBoxComponent::OnActivated()
-{
-  SUPER::OnActivated();
-
-  UpdateMaterials();
 }
 
 void ezSkyBoxComponent::UpdateMaterials()

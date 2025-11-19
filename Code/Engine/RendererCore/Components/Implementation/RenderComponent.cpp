@@ -1,6 +1,7 @@
 #include <RendererCore/RendererCorePCH.h>
 
 #include <RendererCore/Components/RenderComponent.h>
+#include <RendererCore/Pipeline/RenderDataManager.h>
 #include <RendererCore/RenderWorld/RenderWorld.h>
 
 // clang-format off
@@ -32,6 +33,9 @@ void ezRenderComponent::Deinitialize()
 
 void ezRenderComponent::OnActivated()
 {
+  // Ensure that the render data manager exists.
+  GetWorld()->GetOrCreateModule<ezRenderDataManager>();
+
   TriggerLocalBoundsUpdate();
 }
 
@@ -80,16 +84,12 @@ void ezRenderComponent::TriggerLocalBoundsUpdate()
 }
 
 // static
-ezUInt32 ezRenderComponent::GetUniqueIdForRendering(const ezComponent& component, ezUInt32 uiInnerIndex /*= 0*/, ezUInt32 uiInnerIndexShift /*= 24*/)
+ezUInt32 ezRenderComponent::GetUniqueIdForRendering(const ezComponent& component)
 {
   ezUInt32 uniqueId = component.GetUniqueID();
   if (uniqueId == ezInvalidIndex)
   {
     uniqueId = component.GetOwner()->GetHandle().GetInternalID().m_InstanceIndex;
-  }
-  else
-  {
-    uniqueId |= (uiInnerIndex << uiInnerIndexShift);
   }
 
   const ezUInt32 dynamicBit = (1 << 31);

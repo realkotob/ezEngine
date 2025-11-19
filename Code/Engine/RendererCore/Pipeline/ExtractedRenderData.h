@@ -15,12 +15,10 @@ class EZ_RENDERERCORE_DLL ezExtractedRenderData
 {
 public:
   ezExtractedRenderData();
+  ~ezExtractedRenderData();
 
   EZ_ALWAYS_INLINE void SetCamera(const ezCamera& camera) { m_Camera = camera; }
   EZ_ALWAYS_INLINE const ezCamera& GetCamera() const { return m_Camera; }
-
-  EZ_ALWAYS_INLINE void SetLodCamera(const ezCamera& camera) { m_LodCamera = camera; }
-  EZ_ALWAYS_INLINE const ezCamera& GetLodCamera() const { return m_LodCamera; }
 
   EZ_ALWAYS_INLINE void SetViewData(const ezViewData& viewData) { m_ViewData = viewData; }
   EZ_ALWAYS_INLINE const ezViewData& GetViewData() const { return m_ViewData; }
@@ -64,10 +62,14 @@ private:
   {
     ezDynamicArray<ezRenderDataBatch> m_Batches;
     ezDynamicArray<ezRenderDataBatch::SortableRenderData> m_SortableRenderData;
+
+    ezDynamicArray<ezInstanceableRenderData::DataOffsets> m_DataOffsets;
+    ezGALBufferHandle m_hDataOffsetsBuffer;
   };
 
+  void SortAndBatchCategory(DataPerCategory& dataPerCategory, ezRenderData::Category category);
+
   ezCamera m_Camera;
-  ezCamera m_LodCamera; // Temporary until we have a real LOD system
   ezViewData m_ViewData;
   ezTime m_WorldTime;
 

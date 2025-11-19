@@ -935,7 +935,6 @@ void ezRenderPipeline::ExtractData(const ezView& view)
 
   // Store camera and viewdata
   data.SetCamera(*view.GetCamera());
-  data.SetLodCamera(*view.GetLodCamera());
   data.SetViewData(view.GetData());
   data.SetWorldTime(view.GetWorld()->GetClock().GetAccumulatedTime());
   data.SetWorldDebugContext(view.GetWorld());
@@ -1112,7 +1111,6 @@ void ezRenderPipeline::Render(ezRenderContext* pRenderContext)
 
   auto& data = m_Data[ezRenderWorld::GetDataIndexForRendering()];
   const ezCamera* pCamera = &data.GetCamera();
-  const ezCamera* pLodCamera = &data.GetLodCamera();
   const ezViewData* pViewData = &data.GetViewData();
 
   auto& gc = pRenderContext->WriteGlobalConstants();
@@ -1133,17 +1131,18 @@ void ezRenderPipeline::Render(ezRenderContext* pRenderContext)
   float fFar = pCamera->GetFarPlane();
   gc.ClipPlanes = ezVec4(fNear, fFar, 1.0f / fFar, 0.0f);
 
-  const bool bIsDirectionalLightShadow = pViewData->m_CameraUsageHint == ezCameraUsageHint::Shadow && pCamera->IsOrthographic();
+  const bool bIsShadowPass = pViewData->m_CameraUsageHint == ezCameraUsageHint::Shadow;
+  const bool bIsDirectionalLightShadow = bIsShadowPass && pCamera->IsOrthographic();
   gc.MaxZValue = bIsDirectionalLightShadow ? 0.0f : ezMath::MinValue<float>();
 
   gc.Exposure = pCamera->GetExposure();
   gc.RenderPass = ezViewRenderMode::GetRenderPassForShader(pViewData->m_ViewRenderMode);
+  gc.IsShadowPass = bIsShadowPass;
 
   pRenderContext->SetGlobalAndWorldTimeConstants(data.GetWorldTime());
 
   ezRenderViewContext renderViewContext;
   renderViewContext.m_pCamera = pCamera;
-  renderViewContext.m_pLodCamera = pLodCamera;
   renderViewContext.m_pViewData = pViewData;
   renderViewContext.m_pRenderContext = pRenderContext;
   renderViewContext.m_pWorldDebugContext = &data.GetWorldDebugContext();
@@ -1165,6 +1164,8 @@ void ezRenderPipeline::Render(ezRenderContext* pRenderContext)
     pRenderContext->SetShaderPermutationVariable(sCameraMode, sStereo);
   else
     pRenderContext->SetShaderPermutationVariable(sCameraMode, sPerspective);
+
+  EZ_ASSERT_DEV(pCamera->IsStereoscopic() == false || ezGALDevice::GetDefaultDevice()->GetCapabilities().m_bSupportsVSRenderTargetArrayIndex, "Vertex shader render target index must be supported for stereo rendering.");
 
   pRenderContext->SetShaderPermutationVariable(sClipSpaceFlipped, ezClipSpaceYMode::RenderToTextureDefault == ezClipSpaceYMode::Flipped ? sTrue : sFalse);
 
