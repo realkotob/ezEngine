@@ -11,24 +11,14 @@ constexpr float fCollectionPreloadPiece = 0.9f;
 ezSceneLoadUtility::ezSceneLoadUtility() = default;
 ezSceneLoadUtility::~ezSceneLoadUtility() = default;
 
-void ezSceneLoadUtility::StartSceneLoading(ezStringView sSceneFile, ezStringView sPreloadCollectionFile)
+ezStatus ezSceneLoadUtility::FindRedirectedSceneFile(ezStringBuilder& sFinalSceneFile, ezStringView sSceneFile)
 {
-  EZ_ASSERT_DEV(m_LoadingState == LoadingState::NotStarted, "Can't reuse an ezSceneLoadUtility.");
-
-  EZ_LOG_BLOCK("StartSceneLoading");
-
-  m_LoadingState = LoadingState::Ongoing;
-
-  m_sRequestedFile = sSceneFile;
-  ezStringBuilder sFinalSceneFile = sSceneFile;
+  sFinalSceneFile = sSceneFile;
 
   if (sFinalSceneFile.IsEmpty())
   {
-    LoadingFailed("No scene file specified.");
-    return;
+    return ezStatus("No scene file specified.");
   }
-
-  ezLog::Info("Loading scene '{}'.", sSceneFile);
 
   if (sFinalSceneFile.IsAbsolutePath())
   {
@@ -43,8 +33,7 @@ void ezSceneLoadUtility::StartSceneLoading(ezStringView sSceneFile, ezStringView
     {
       if (ezFileSystem::ResolvePath(sFinalSceneFile, nullptr, &sFinalSceneFile).Failed())
       {
-        LoadingFailed(ezFmt("Scene path is not located in any data directory: '{}'", sFinalSceneFile));
-        return;
+        return ezStatus(ezFmt("Scene path is not located in any data directory: '{}'", sFinalSceneFile));
       }
     }
 
@@ -55,6 +44,59 @@ void ezSceneLoadUtility::StartSceneLoading(ezStringView sSceneFile, ezStringView
       sFinalSceneFile.ChangeFileExtension("ezBinScene");
     else
       sFinalSceneFile.ChangeFileExtension("ezBinPrefab");
+  }
+
+  return EZ_SUCCESS;
+}
+
+ezStatus ezSceneLoadUtility::LoadSceneImmediate(ezWorld& targetWorld, ezStringView sSceneFile)
+{
+  ezStringBuilder sFinalSceneFile;
+  EZ_SUCCEED_OR_RETURN(FindRedirectedSceneFile(sFinalSceneFile, sSceneFile));
+
+  ezFileReader fileReader;
+
+  if (fileReader.Open(sFinalSceneFile).Failed())
+    return ezStatus("Failed to open the file.");
+
+  // Read and skip the asset file header
+  ezAssetFileHeader header;
+  header.Read(fileReader).AssertSuccess();
+
+  char szSceneTag[16];
+  fileReader.ReadBytes(szSceneTag, sizeof(char) * 16);
+
+  if (!ezStringUtils::IsEqualN(szSceneTag, "[ezBinaryScene]", 16))
+    return ezStatus("The given file isn't an object-graph file.");
+
+  ezWorldReader worldReader;
+  if (worldReader.ReadWorldDescription(fileReader).Failed())
+    return ezStatus("Error reading world description.");
+
+  worldReader.InstantiateWorld(targetWorld, nullptr);
+
+  return EZ_SUCCESS;
+}
+
+void ezSceneLoadUtility::StartSceneLoading(ezStringView sSceneFile, ezStringView sPreloadCollectionFile)
+{
+  EZ_ASSERT_DEV(m_LoadingState == LoadingState::NotStarted, "Can't reuse an ezSceneLoadUtility.");
+
+  EZ_LOG_BLOCK("StartSceneLoading");
+
+  ezLog::Info("Loading scene '{}'.", sSceneFile);
+
+  m_LoadingState = LoadingState::Ongoing;
+
+  m_sRequestedFile = sSceneFile;
+
+  ezStringBuilder sFinalSceneFile;
+  auto res = FindRedirectedSceneFile(sFinalSceneFile, sSceneFile);
+
+  if (res.Failed())
+  {
+    LoadingFailed(res.GetMessageString().GetView());
+    return;
   }
 
   if (sFinalSceneFile != sSceneFile)
