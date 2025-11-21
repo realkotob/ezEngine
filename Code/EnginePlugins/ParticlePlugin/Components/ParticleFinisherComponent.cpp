@@ -39,6 +39,7 @@ EZ_BEGIN_COMPONENT_TYPE(ezParticleFinisherComponent, 1, ezComponentMode::Static)
   EZ_BEGIN_MESSAGEHANDLERS
   {
     EZ_MESSAGE_HANDLER(ezMsgExtractRenderData, OnMsgExtractRenderData),
+    EZ_MESSAGE_HANDLER(ezMsgInterruptPlaying, OnMsgInterruptPlaying),
   }
   EZ_END_MESSAGEHANDLERS;
 }
@@ -87,6 +88,14 @@ void ezParticleFinisherComponent::UpdateBounds()
   else
   {
     GetWorld()->DeleteObjectDelayed(GetOwner()->GetHandle());
+  }
+}
+
+void ezParticleFinisherComponent::OnMsgInterruptPlaying(ezMsgInterruptPlaying& ref_msg)
+{
+  if (m_EffectController.IsAlive())
+  {
+    m_EffectController.StopImmediate();
   }
 }
 

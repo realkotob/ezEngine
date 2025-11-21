@@ -108,6 +108,7 @@ ezParticleComponent::~ezParticleComponent() = default;
 void ezParticleComponent::OnDeactivated()
 {
   m_EffectController.Invalidate();
+  SetUserFlag(0, false);
 
   ezRenderComponent::OnDeactivated();
 }
@@ -352,11 +353,11 @@ void ezParticleComponent::OnMsgDeleteGameObject(ezMsgDeleteGameObject& msg)
 
 void ezParticleComponent::Update()
 {
-  if (!m_EffectController.IsAlive() && m_bSpawnAtStart)
+  if (!m_EffectController.IsAlive() && m_bSpawnAtStart && !GetUserFlag(0))
   {
     if (StartEffect())
     {
-      m_bSpawnAtStart = false;
+      SetUserFlag(0, true); // already spawned
 
       if (m_EffectController.IsContinuousEffect())
       {
@@ -366,7 +367,7 @@ void ezParticleComponent::Update()
         }
         else
         {
-          m_bSpawnAtStart = true;
+          SetUserFlag(0, false);
         }
       }
     }
