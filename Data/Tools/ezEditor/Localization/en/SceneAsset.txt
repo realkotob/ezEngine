@@ -70,8 +70,8 @@ ezWindVolumeSphereComponent;Sphere Wind Volume;;https://ezengine.net/pages/docs/
 ezBakedProbesComponent;Baked Probes
 ezBakedProbesVolumeComponent;Baked Probes Volume
 ezScriptComponent;Script Component;;https://ezengine.net/pages/docs/custom-code/visual-script/script-component.html
-ezPathComponent;Path Shape;;https://ezengine.net/pages/docs/animation/paths/path-component.html
-ezPathNodeComponent;Path Node;;https://ezengine.net/pages/docs/animation/paths/path-node-component.html
+ezSplineComponent;Spline;;https://ezengine.net/pages/docs/animation/paths/spline-component.html
+ezSplineNodeComponent;Spline Node;;https://ezengine.net/pages/docs/animation/paths/spline-node-component.html
 ezFollowPathComponent;Follow Path;;https://ezengine.net/pages/docs/animation/paths/follow-path-component.html
 ezPowerConnectorComponent;Power Connector;;https://ezengine.net/pages/docs/gameplay/power-connector-component.html
 ezTriggerDelayModifierComponent;Trigger Delay Modifier;;https://ezengine.net/pages/docs/custom-code/game-logic/trigger-delay-modifier-component.html
