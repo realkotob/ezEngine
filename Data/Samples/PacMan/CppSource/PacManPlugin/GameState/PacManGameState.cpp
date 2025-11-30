@@ -197,7 +197,7 @@ ezResult PacManGameState::SpawnPlayer(ezStringView sStartPosition, const ezTrans
 
 void PacManGameState::ResetState()
 {
-  // we use a global blackboard to store the overall state of the game (https://ezengine.net/pages/docs/Miscellaneous/blackboards.html)
+  // we use a global blackboard to store the overall state of the game (https://ezengine.net/pages/docs/misc/blackboards.html)
 
   m_uiNumCoinsTotal = 0;
 
