@@ -6,6 +6,7 @@
 #include <Core/Utils/Blackboard.h>
 #include <Core/World/World.h>
 #include <Foundation/Configuration/CVar.h>
+#include <Foundation/IO/FileSystem/FileSystem.h>
 #include <Foundation/Logging/Log.h>
 #include <GameEngine/Input/InputDebugVis.h>
 #include <PacManPlugin/GameState/PacManGameState.h>
@@ -130,7 +131,11 @@ void PacManGameState::AfterWorldUpdate()
     ezSoundInterface::PlaySound(m_pMainWorld, "{ 2281d82a-cf87-4747-b664-a41ebc74c052 }", ezTransform::MakeIdentity()).IgnoreResult(); // MiniAudio
   }
 
-  if (iPacManState == PacManState::EatenByGhost)
+  if (m_bShowSceneExportError)
+  {
+    ezDebugRenderer::DrawInfoText(m_pMainWorld, ezDebugTextPlacement::TopCenter, "Stats", "Cannot reload scene!\n\nThe scene must be transformed/exported first.\nUse 'Transform All' in the editor or export the scene.", ezColor::OrangeRed);
+  }
+  else if (iPacManState == PacManState::EatenByGhost)
   {
     if (m_bTouchInput)
     {
@@ -141,8 +146,7 @@ void PacManGameState::AfterWorldUpdate()
       ezDebugRenderer::DrawInfoText(m_pMainWorld, ezDebugTextPlacement::TopCenter, "Stats", "YOU LOST!\n\nPress SPACE to play again.", ezColor::Red);
     }
   }
-
-  if (iPacManState == PacManState::WonGame)
+  else if (iPacManState == PacManState::WonGame)
   {
     if (m_bTouchInput)
     {
@@ -244,9 +248,21 @@ void PacManGameState::ProcessInput()
     ezString sScene;
     ezString sPreloadCollection;
     GetStartupOptions(sScene, sPreloadCollection);
-    LoadScene(sScene, sPreloadCollection, {}, ezTransform::MakeIdentity());
 
-    // scene loading happens in the background, and once it is ready, will switch automatically to the new scene
+    // Check if the exported scene file exists before attempting to load it
+    if (!ezFileSystem::ExistsFile(sScene))
+    {
+      // The scene hasn't been exported yet, show an error message
+      ezLog::Warning("Cannot reload scene '{}'. The scene must be transformed/exported before it can be reloaded.", sScene);
+      m_bShowSceneExportError = true;
+    }
+    else
+    {
+      m_bShowSceneExportError = false;
+      LoadScene(sScene, sPreloadCollection, {}, ezTransform::MakeIdentity());
+
+      // scene loading happens in the background, and once it is ready, will switch automatically to the new scene
+    }
   }
 }
 
