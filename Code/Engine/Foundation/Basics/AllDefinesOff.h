@@ -93,6 +93,7 @@
 #define EZ_SIMD_IMPLEMENTATION_SSE 2
 #define EZ_SIMD_IMPLEMENTATION_NEON 3
 
+
 // SSE levels
 #define EZ_SSE_20 0x20
 #define EZ_SSE_30 0x30

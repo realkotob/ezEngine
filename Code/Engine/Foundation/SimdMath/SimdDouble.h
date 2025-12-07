@@ -55,7 +55,7 @@ public:
   ezSimdDouble& operator*=(const ezSimdDouble& f);
   ezSimdDouble& operator/=(const ezSimdDouble& f);
 
-  bool IsEqual(const ezSimdDouble& rhs, const ezSimdDouble& dEpsilon) const;
+  bool IsEqual(const ezSimdDouble& rhs, const ezSimdDouble& epsilon) const;
 
   bool operator==(const ezSimdDouble& f) const;
   bool operator!=(const ezSimdDouble& f) const;
@@ -78,13 +78,10 @@ public:
   bool operator<(float f) const;
   bool operator<=(float f) const;
 
-  template <ezMathAcc::Enum acc = ezMathAcc::FULL>
   ezSimdDouble GetReciprocal() const;
 
-  template <ezMathAcc::Enum acc = ezMathAcc::FULL>
   ezSimdDouble GetSqrt() const;
 
-  template <ezMathAcc::Enum acc = ezMathAcc::FULL>
   ezSimdDouble GetInvSqrt() const;
 
   [[nodiscard]] ezSimdDouble Max(const ezSimdDouble& d) const;
@@ -99,13 +96,11 @@ public:
 #  if EZ_SSE_LEVEL >= EZ_SSE_AVX
 #    include <Foundation/SimdMath/Implementation/SSE/SSEDouble_AVX_inl.h>
 #  else
-// Could also redirect to fpu version for the time being
 #    include <Foundation/SimdMath/Implementation/SSE/SSEDouble_inl.h>
 #  endif
 #elif EZ_SIMD_IMPLEMENTATION == EZ_SIMD_IMPLEMENTATION_FPU
 #  include <Foundation/SimdMath/Implementation/FPU/FPUDouble_inl.h>
 #elif EZ_SIMD_IMPLEMENTATION == EZ_SIMD_IMPLEMENTATION_NEON
-// Could also redirect to fpu version for the time being
 #  include <Foundation/SimdMath/Implementation/NEON/NEONDouble_inl.h>
 #else
 #  error "Unknown SIMD implementation."

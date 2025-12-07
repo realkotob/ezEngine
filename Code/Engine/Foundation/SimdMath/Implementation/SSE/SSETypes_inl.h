@@ -40,10 +40,6 @@ namespace ezInternal
     __m128d xy;
     __m128d zw;
   };
-
-  // or for the time being
-  // using QuadDouble = ezVec4d;
-
 #endif
 
   using QuadFloat = __m128;
