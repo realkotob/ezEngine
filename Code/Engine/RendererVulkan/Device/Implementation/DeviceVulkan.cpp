@@ -13,6 +13,7 @@
 #include <RendererFoundation/Device/DeviceFactory.h>
 #include <RendererFoundation/Device/SwapChain.h>
 #include <RendererFoundation/Profiling/Profiling.h>
+#include <RendererFoundation/RendererReflection.h>
 #include <RendererVulkan/Cache/ResourceCacheVulkan.h>
 #include <RendererVulkan/CommandEncoder/CommandEncoderImplVulkan.h>
 #include <RendererVulkan/Device/DeviceVulkan.h>
