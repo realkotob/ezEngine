@@ -51,8 +51,9 @@ ezQuatTemplate<Type> ezQuatTemplate<Type>::MakeFromAxisAndAngle(const ezVec3Temp
 {
   const ezAngle halfAngle = angle * 0.5f;
 
-  ezVec3 v = static_cast<Type>(ezMath::Sin(halfAngle)) * vRotationAxis;
-  float w = ezMath::Cos(halfAngle);
+  ezVec3Template<Type> v = static_cast<Type>(ezMath::Sin(halfAngle)) * vRotationAxis;
+  
+  Type w = static_cast<Type>(ezMath::Cos(halfAngle));
 
   return ezQuatTemplate<Type>(v.x, v.y, v.z, w);
 }
