@@ -28,7 +28,7 @@ int main(int iArgc, const char** argv)
 #  if EZ_ENABLED(EZ_PLATFORM_WINDOWS_DESKTOP)
   ezCommandLineUtils::GetGlobalInstance()->SetCommandLine();
 #  else
-  ezCommandLineUtils::GetGlobalInstance()->SetCommandLine(argc, argv);
+  ezCommandLineUtils::GetGlobalInstance()->SetCommandLine(iArgc, argv);
 #  endif
   int dummyArgc = 0;
   char** dummyArgv = nullptr;
@@ -44,7 +44,7 @@ int main(int iArgc, const char** argv)
   pQtApplication->exec();
   ezRun_Shutdown(pApp);
 #else
-  pApp->SetCommandLineArguments((ezUInt32)argc, argv);
+  pApp->SetCommandLineArguments((ezUInt32)iArgc, argv);
   ezRun(pApp);
 #endif
 
