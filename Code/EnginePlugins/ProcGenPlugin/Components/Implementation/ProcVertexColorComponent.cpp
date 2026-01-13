@@ -120,7 +120,7 @@ void ezProcVertexColorComponentManager::UpdateVertexColors(const ezWorldModule::
     for (ezUInt32 i = 0; i < m_ComponentsToUpdate.GetCount(); ++i)
     {
       ezProcVertexColorComponent* pComponent = nullptr;
-      if (!TryGetComponent(m_ComponentsToUpdate[i], pComponent))
+      if (!TryGetComponent(m_ComponentsToUpdate[i], pComponent) || !pComponent->IsActiveAndInitialized())
         continue;
 
       if (!UpdateComponentOutputs(*pComponent))
@@ -257,11 +257,8 @@ void ezProcVertexColorComponentManager::UpdateComponentVertexColors(const Update
 
 void ezProcVertexColorComponentManager::EnqueueUpdate(ezProcVertexColorComponent& component)
 {
-  auto& hResource = component.GetResource();
-  if (!hResource.IsValid())
-  {
+  if (!component.IsActiveAndInitialized() || !component.GetResource().IsValid())
     return;
-  }
 
   if (!m_ComponentsToUpdate.Contains(component.GetHandle()))
   {
@@ -522,6 +519,13 @@ void ezProcVertexColorComponent::OnMsgCustomInstanceDataOffsetChanged(ezMsgCusto
     const ezUInt32 uiNumOutputs = m_Outputs.GetCount();
     pMeshComponent->SetCustomInstanceData(EncodeOffset(ref_msg.m_NewOffset, uiNumOutputs), pManager->GetVertexColorBuffer());
   }
+}
+
+void ezProcVertexColorComponent::OnMsgGenerateSplineMeshCollision(ezMsgGenerateSplineMeshCollision& ref_msg)
+{
+  // Although we don't generate any collision meshes here, we use this as a signal that a spline mesh has changed and we need to update our vertex colors.
+  auto pManager = static_cast<ezProcVertexColorComponentManager*>(GetOwningManager());
+  pManager->EnqueueUpdate(*this);
 }
 
 ezUInt32 ezProcVertexColorComponent::OutputDescs_GetCount() const
