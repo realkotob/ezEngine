@@ -257,15 +257,7 @@ void ezJoltGenerateCollisionComponent::OnMsgGenerateSplineMeshCollision(ezMsgGen
   if (GetUniqueID() == ezInvalidIndex)
     return;
 
-  const ezSplineComponent* pSplineComponent = nullptr;
-  if (!GetWorld()->TryGetComponent(ref_msg.m_hSplineComponent, pSplineComponent))
-    return;
-
-  const ezUInt64 uiStableSplineId = ezHashingUtils::xxHash64(&pSplineComponent->GetUuid(), sizeof(ezUuid));
-
-  ezStringBuilder sb;
-  sb.SetFormat(":project/AssetCache/Generated/GenCol_{}_{}.ezJoltMesh", ezArgU(m_uiStableId, 16, true, 16, true), ezArgU(uiStableSplineId, 16, true, 16, true));
-  m_sCollisionMeshPath.Assign(sb);
+  m_sCollisionMeshPath.Clear();
 
   ezHybridArray<ezCpuMeshResourceHandle, 16> cpuMeshes;
   ezHybridArray<ezVec2, 16> scaleOffsets;
@@ -278,6 +270,19 @@ void ezJoltGenerateCollisionComponent::OnMsgGenerateSplineMeshCollision(ezMsgGen
       scaleOffsets.PushBack(ref_msg.m_ScaleOffsets[i]);
     }
   }
+
+  if (cpuMeshes.IsEmpty())
+    return;
+
+  const ezSplineComponent* pSplineComponent = nullptr;
+  if (!GetWorld()->TryGetComponent(ref_msg.m_hSplineComponent, pSplineComponent))
+    return;
+
+  const ezUInt64 uiStableSplineId = ezHashingUtils::xxHash64(&pSplineComponent->GetUuid(), sizeof(ezUuid));
+
+  ezStringBuilder sb;
+  sb.SetFormat(":project/AssetCache/Generated/GenCol_{}_{}.ezJoltMesh", ezArgU(m_uiStableId, 16, true, 16, true), ezArgU(uiStableSplineId, 16, true, 16, true));
+  m_sCollisionMeshPath.Assign(sb);
 
   auto pTask = EZ_DEFAULT_NEW(SplineCollisionGenerationTask, GetHandle(), sb, pSplineComponent->GetSpline(), pSplineComponent->GetDistanceToKeyRemapping(), cpuMeshes, scaleOffsets, ref_msg.m_fLocalOffsetY, ref_msg.m_fLocalOffsetZ);
   pTask->ConfigureTask("Generate Spline Collision Mesh", ezTaskNesting::Maybe);
@@ -311,6 +316,9 @@ void ezJoltGenerateCollisionComponent::StartGenerateTask(ezSharedPtr<ezTask>&& p
 
 void ezJoltGenerateCollisionComponent::FinalizeGeneration()
 {
+  if (m_sCollisionMeshPath.IsEmpty())
+    return;
+
   ezTaskSystem::WaitForGroup(m_TaskGroupID);
 
   ezGameObject* pObject = GetOwner();
