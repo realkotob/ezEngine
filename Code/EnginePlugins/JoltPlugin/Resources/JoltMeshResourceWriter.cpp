@@ -279,8 +279,7 @@ ezResult ezJoltMeshResourceWriter::CookTriangleMesh(const ezJoltMeshDesc& meshDe
 
       if (idx0 == idx1 || idx0 == idx2 || idx1 == idx2)
       {
-        // triangle is degenerate, remove it from the list
-        triangleList.resize(triangleList.size() - 1);
+        // triangle is degenerate, skip it
         continue;
       }
 
@@ -290,8 +289,7 @@ ezResult ezJoltMeshResourceWriter::CookTriangleMesh(const ezJoltMeshDesc& meshDe
 
       if (v0.IsEqual(v1, 0.001f) || v0.IsEqual(v2, 0.001f) || v1.IsEqual(v2, 0.001f))
       {
-        // triangle is degenerate, remove it from the list
-        triangleList.resize(triangleList.size() - 1);
+        // triangle is degenerate, skip it
         continue;
       }
 
