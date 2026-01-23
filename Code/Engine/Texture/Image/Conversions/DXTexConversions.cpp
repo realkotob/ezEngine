@@ -135,6 +135,13 @@ namespace
       assert(SUCCEEDED(castResult));
     }
 
+    {
+      DXGI_ADAPTER_DESC1 desc1;
+      pAdapter1->GetDesc1(&desc1);
+
+      ezLog::Info("D3D11 Device used for texture compression: '{}'", desc1.Description);
+    }
+
     static PFN_D3D11_CREATE_DEVICE s_DynamicD3D11CreateDevice = nullptr;
 
     if (!s_DynamicD3D11CreateDevice)

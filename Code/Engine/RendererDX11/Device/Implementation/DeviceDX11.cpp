@@ -121,7 +121,22 @@ retry:
 
     static_assert(EZ_ARRAY_SIZE(FeatureLevels) == EZ_ARRAY_SIZE(FeatureLevelNames));
 
-    ezLog::Success("Initialized D3D11 device with feature level {0}.", FeatureLevelNames[FeatureLevelIdx]);
+    // Get the adapter from the device
+    IDXGIDevice* pDXGIDevice = nullptr;
+    IDXGIAdapter* pAdapter = nullptr;
+    DXGI_ADAPTER_DESC desc1 = {};
+
+    if (SUCCEEDED(m_pDevice->QueryInterface(__uuidof(IDXGIDevice), (void**)&pDXGIDevice)))
+    {
+      if (SUCCEEDED(pDXGIDevice->GetAdapter(&pAdapter)))
+      {
+        pAdapter->GetDesc(&desc1);
+        pAdapter->Release();
+      }
+      pDXGIDevice->Release();
+    }
+
+    ezLog::Success("Initialized D3D11 device '{}' with feature level {}.", desc1.Description, FeatureLevelNames[FeatureLevelIdx]);
 
     // Validate that we got the minimum required feature level
     if (m_uiFeatureLevel < D3D_FEATURE_LEVEL_11_1)
