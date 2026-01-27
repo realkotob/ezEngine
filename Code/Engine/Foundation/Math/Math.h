@@ -1,7 +1,6 @@
 #pragma once
 
 #include <Foundation/Basics.h>
-#include <Foundation/Math/Angle.h>
 #include <Foundation/Math/Constants.h>
 #include <Foundation/Math/Declarations.h>
 
@@ -31,25 +30,32 @@ namespace ezMath
   /// ***** Trigonometric Functions *****
 
   /// \brief Takes an angle, returns its sine
-  [[nodiscard]] float Sin(ezAngle a); // [tested]
+  template <typename Type>
+  [[nodiscard]] Type Sin(ezAngleTemplate<Type> a); // [tested]
 
   /// \brief Takes an angle, returns its cosine
-  [[nodiscard]] float Cos(ezAngle a); // [tested]
+  template <typename Type>
+  [[nodiscard]] Type Cos(ezAngleTemplate<Type> a); // [tested]
 
   /// \brief Takes an angle, returns its tangent
-  [[nodiscard]] float Tan(ezAngle a); // [tested]
+  template <typename Type>
+  [[nodiscard]] Type Tan(ezAngleTemplate<Type> a); // [tested]
 
   /// \brief Returns the arcus sinus of f
-  [[nodiscard]] ezAngle ASin(float f); // [tested]
+  template <typename Type>
+  [[nodiscard]] ezAngleTemplate<Type> ASin(Type f); // [tested]
 
   /// \brief Returns the arcus cosinus of f
-  [[nodiscard]] ezAngle ACos(float f); // [tested]
+  template <typename Type>
+  [[nodiscard]] ezAngleTemplate<Type> ACos(Type f); // [tested]
 
   /// \brief Returns the arcus tangent of f
-  [[nodiscard]] ezAngle ATan(float f); // [tested]
+  template <typename Type>
+  [[nodiscard]] ezAngleTemplate<Type> ATan(Type f); // [tested]
 
   /// \brief Returns the atan2 of x and y
-  [[nodiscard]] ezAngle ATan2(float y, float x); // [tested]
+  template <typename Type>
+  [[nodiscard]] ezAngleTemplate<Type> ATan2(Type y, Type x); // [tested]
 
   /// \brief Returns e^f
   [[nodiscard]] float Exp(float f); // [tested]
@@ -148,13 +154,15 @@ namespace ezMath
   /// Wrapping happens in both positive and negative direction. Ie -0.1f will be wrapped to 0.9f and 1.1f will be wrapped to 0.1f.
   /// Note that here the value 1.0f is included in the range. Only values larger than 1.0f get wrapped back to zero.
   /// Therefore it is different to what 'Fraction' would return.
-  [[nodiscard]] float WrapFloat01(float fValue); // [tested]
+    template <typename T>
+  [[nodiscard]] T WrapFloat01(T fValue); // [tested]
 
   /// \brief Wraps a float value around to stay within the [min; max] range.
   ///
   /// Both fMinValue and fMaxValue are inclusive.
   /// Both values may be negative, but fMinValue has to be strictly smaller than fMaxValue.
-  [[nodiscard]] float WrapFloat(float fValue, float fMinValue, float fMaxValue); // [tested]
+    template <typename T>
+  [[nodiscard]] T WrapFloat(T fValue, T fMinValue, T fMaxValue); // [tested]
 
   /// \brief Clamps "value" to the range [0; 1]. Returns "value", if it is inside the range already
   template <typename T>
@@ -195,7 +203,9 @@ namespace ezMath
   /// \brief Casts the float to an integer, removes the fractional part
   ///
   /// \sa Trunc, Round, Floor, Ceil
-  [[nodiscard]] constexpr ezInt32 FloatToInt(float value);
+  template <typename T>
+  [[nodiscard]] constexpr ezInt32 FloatToInt32(T value);
+
 
   // There is a compiler bug in VS 2019 targeting 32-bit that causes an internal compiler error when casting double to long long.
   // FloatToInt(double) is not available on these version of the MSVC compiler.
@@ -458,6 +468,7 @@ namespace ezMath
   [[nodiscard]] constexpr ezUInt64 MakeUInt64(ezUInt32 uiHigh32, ezUInt32 uiLow32);
 
 } // namespace ezMath
+
 
 #include <Foundation/Math/Implementation/MathDouble_inl.h>
 #include <Foundation/Math/Implementation/MathFixedPoint_inl.h>

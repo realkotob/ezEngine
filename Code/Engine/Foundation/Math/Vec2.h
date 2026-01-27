@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Foundation/Math/Math.h>
+#include <Foundation/Math/Angle.h>
 
 #if EZ_ENABLED(EZ_MATH_CHECK_FOR_NAN)
 #  define EZ_VEC2_CHECK_FOR_NAN(obj) (obj)->AssertNotNaN();
@@ -166,7 +167,7 @@ public:
   // *** Common vector operations ***
 public:
   /// \brief Returns the positive angle between *this and rhs.
-  ezAngle GetAngleBetween(const ezVec2Template<Type>& rhs) const; // [tested]
+  ezAngleTemplate<Type> GetAngleBetween(const ezVec2Template<Type>& rhs) const; // [tested]
 
   /// \brief Returns the Dot-product of the two vectors (commutative, order does not matter)
   Type Dot(const ezVec2Template<Type>& rhs) const; // [tested]
