@@ -674,7 +674,7 @@ void ezEngineProcessGameApplication::Init_FileSystem_ConfigureDataDirs()
 bool ezEngineProcessGameApplication::Run_ProcessApplicationInput()
 {
   // override the escape action to not shut down the app, but instead close the play-the-game window
-  if (ezInputManager::GetInputActionState("GameApp", "CloseApp") != ezKeyState::Up)
+  if (ezInputManager::GetInputActionState("GameApp", "CloseApp") == ezKeyState::Pressed)
   {
     if (m_pGameState)
     {
