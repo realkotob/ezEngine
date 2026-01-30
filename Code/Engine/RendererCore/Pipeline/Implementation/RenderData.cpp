@@ -1,41 +1,13 @@
 #include <RendererCore/RendererCorePCH.h>
 
 #include <RendererCore/Pipeline/RenderData.h>
-#include <RendererCore/Pipeline/Renderer.h>
 #include <RendererCore/Pipeline/SortingFunctions.h>
-
-// clang-format off
-EZ_BEGIN_SUBSYSTEM_DECLARATION(RendererCore, RenderData)
-
-  BEGIN_SUBSYSTEM_DEPENDENCIES
-    "Foundation"
-  END_SUBSYSTEM_DEPENDENCIES
-
-  ON_HIGHLEVELSYSTEMS_STARTUP
-  {
-    ezRenderData::UpdateRendererTypes();
-
-    ezPlugin::Events().AddEventHandler(ezRenderData::PluginEventHandler);
-  }
-
-  ON_HIGHLEVELSYSTEMS_SHUTDOWN
-  {
-    ezPlugin::Events().RemoveEventHandler(ezRenderData::PluginEventHandler);
-
-    ezRenderData::ClearRendererInstances();
-  }
-
-EZ_END_SUBSYSTEM_DECLARATION;
-// clang-format on
 
 // clang-format off
 EZ_BEGIN_DYNAMIC_REFLECTED_TYPE(ezRenderData, 1, ezRTTINoAllocator)
 EZ_END_DYNAMIC_REFLECTED_TYPE;
 
 EZ_BEGIN_DYNAMIC_REFLECTED_TYPE(ezInstanceableRenderData, 1, ezRTTINoAllocator)
-EZ_END_DYNAMIC_REFLECTED_TYPE;
-
-EZ_BEGIN_DYNAMIC_REFLECTED_TYPE(ezRenderer, 1, ezRTTINoAllocator)
 EZ_END_DYNAMIC_REFLECTED_TYPE;
 
 EZ_IMPLEMENT_MESSAGE_TYPE(ezMsgExtractRenderData);
@@ -70,7 +42,6 @@ EZ_BEGIN_DYNAMIC_REFLECTED_TYPE(ezMsgCustomInstanceDataOffsetChanged, 1, ezRTTIN
   EZ_END_ATTRIBUTES;
 }
 EZ_END_DYNAMIC_REFLECTED_TYPE;
-
 // clang-format on
 
 #if EZ_ENABLED(EZ_COMPILE_FOR_DEVELOPMENT)
@@ -82,10 +53,6 @@ static_assert(sizeof(ezInstanceableRenderData) == 64);
 #endif
 
 ezHybridArray<ezRenderData::CategoryData, 32> ezRenderData::s_CategoryData;
-
-ezHybridArray<const ezRTTI*, 16> ezRenderData::s_RendererTypes;
-ezDynamicArray<ezUniquePtr<ezRenderer>> ezRenderData::s_RendererInstances;
-bool ezRenderData::s_bRendererInstancesDirty = false;
 
 // static
 ezRenderData::Category ezRenderData::RegisterCategory(const char* szCategoryName, SortingKeyFunc sortingKeyFunc)
@@ -162,119 +129,30 @@ void ezRenderData::GetAllCategoryNames(ezDynamicArray<ezHashedString>& out_categ
   }
 }
 
-// static
-void ezRenderData::PluginEventHandler(const ezPluginEvent& e)
-{
-  switch (e.m_EventType)
-  {
-    case ezPluginEvent::AfterPluginChanges:
-      UpdateRendererTypes();
-      break;
-
-    default:
-      break;
-  }
-}
-
-// static
-void ezRenderData::UpdateRendererTypes()
-{
-  s_RendererTypes.Clear();
-
-  ezRTTI::ForEachDerivedType<ezRenderer>([](const ezRTTI* pRtti)
-    { s_RendererTypes.PushBack(pRtti); },
-    ezRTTI::ForEachOptions::ExcludeNonAllocatable);
-
-  s_bRendererInstancesDirty = true;
-}
-
-// static
-void ezRenderData::CreateRendererInstances()
-{
-  ClearRendererInstances();
-
-  for (auto pRendererType : s_RendererTypes)
-  {
-    EZ_ASSERT_DEV(pRendererType->IsDerivedFrom(ezGetStaticRTTI<ezRenderer>()), "Renderer type '{}' must be derived from ezRenderer",
-      pRendererType->GetTypeName());
-
-    auto pRenderer = pRendererType->GetAllocator()->Allocate<ezRenderer>();
-
-    ezUInt32 uiIndex = s_RendererInstances.GetCount();
-    s_RendererInstances.PushBack(pRenderer);
-
-    ezHybridArray<Category, 8> supportedCategories;
-    pRenderer->GetSupportedRenderDataCategories(supportedCategories);
-
-    ezHybridArray<const ezRTTI*, 8> supportedTypes;
-    pRenderer->GetSupportedRenderDataTypes(supportedTypes);
-
-    for (auto pType : supportedTypes)
-    {
-      for (Category category : supportedCategories)
-      {
-        auto& categoryData = s_CategoryData[category.m_uiValue];
-        if (categoryData.m_staticCategory != ezInvalidRenderDataCategory)
-        {
-          s_CategoryData[categoryData.m_staticCategory.m_uiValue].m_TypeToRendererIndex.Insert(pType, uiIndex);
-          s_CategoryData[categoryData.m_dynamicCategory.m_uiValue].m_TypeToRendererIndex.Insert(pType, uiIndex);
-        }
-        else
-        {
-          categoryData.m_TypeToRendererIndex.Insert(pType, uiIndex);
-        }
-      }
-    }
-  }
-
-  // Copy the renderer types to derived categories
-  for (auto& categoryData : s_CategoryData)
-  {
-    if (categoryData.m_baseCategory == ezInvalidRenderDataCategory)
-      continue;
-
-    categoryData.m_TypeToRendererIndex = s_CategoryData[categoryData.m_baseCategory.m_uiValue].m_TypeToRendererIndex;
-  }
-
-  s_bRendererInstancesDirty = false;
-}
-
-// static
-void ezRenderData::ClearRendererInstances()
-{
-  s_RendererInstances.Clear();
-
-  for (auto& categoryData : s_CategoryData)
-  {
-    categoryData.m_TypeToRendererIndex.Clear();
-  }
-}
-
 //////////////////////////////////////////////////////////////////////////
 
-ezRenderData::Category ezDefaultRenderDataCategories::Light = ezRenderData::RegisterCategory("Light", &ezRenderSortingFunctions::ByRenderDataThenFrontToBack);
-ezRenderData::Category ezDefaultRenderDataCategories::Decal = ezRenderData::RegisterCategory("Decal", &ezRenderSortingFunctions::ByRenderDataThenFrontToBack);
-ezRenderData::Category ezDefaultRenderDataCategories::ReflectionProbe = ezRenderData::RegisterCategory("ReflectionProbe", &ezRenderSortingFunctions::ByRenderDataThenFrontToBack);
-ezRenderData::Category ezDefaultRenderDataCategories::Sky = ezRenderData::RegisterCategory("Sky", &ezRenderSortingFunctions::ByRenderDataThenFrontToBack);
+ezRenderData::Category ezDefaultRenderDataCategories::Light = ezRenderData::RegisterCategory("Light", &ezRenderSortingFunctions::ByRenderDataThenFrontToBackFunc);
+ezRenderData::Category ezDefaultRenderDataCategories::Decal = ezRenderData::RegisterCategory("Decal", &ezRenderSortingFunctions::ByRenderDataThenFrontToBackFunc);
+ezRenderData::Category ezDefaultRenderDataCategories::ReflectionProbe = ezRenderData::RegisterCategory("ReflectionProbe", &ezRenderSortingFunctions::ByRenderDataThenFrontToBackFunc);
+ezRenderData::Category ezDefaultRenderDataCategories::Sky = ezRenderData::RegisterCategory("Sky", &ezRenderSortingFunctions::ByRenderDataThenFrontToBackFunc);
 
-ezRenderData::Category ezDefaultRenderDataCategories::LitOpaqueStatic = ezRenderData::RegisterCategory("LitOpaqueStatic", &ezRenderSortingFunctions::ByRenderDataThenFrontToBack);
-ezRenderData::Category ezDefaultRenderDataCategories::LitOpaqueDynamic = ezRenderData::RegisterCategory("LitOpaqueDynamic", &ezRenderSortingFunctions::ByRenderDataThenFrontToBack);
+ezRenderData::Category ezDefaultRenderDataCategories::LitOpaqueStatic = ezRenderData::RegisterCategory("LitOpaqueStatic", &ezRenderSortingFunctions::ByRenderDataThenFrontToBackFunc);
+ezRenderData::Category ezDefaultRenderDataCategories::LitOpaqueDynamic = ezRenderData::RegisterCategory("LitOpaqueDynamic", &ezRenderSortingFunctions::ByRenderDataThenFrontToBackFunc);
 ezRenderData::Category ezDefaultRenderDataCategories::LitOpaque = ezRenderData::RegisterRedirectedCategory("LitOpaque", ezDefaultRenderDataCategories::LitOpaqueStatic, ezDefaultRenderDataCategories::LitOpaqueDynamic);
 
-ezRenderData::Category ezDefaultRenderDataCategories::LitMaskedStatic = ezRenderData::RegisterCategory("LitMaskedStatic", &ezRenderSortingFunctions::ByRenderDataThenFrontToBack);
-ezRenderData::Category ezDefaultRenderDataCategories::LitMaskedDynamic = ezRenderData::RegisterCategory("LitMaskedDynamic", &ezRenderSortingFunctions::ByRenderDataThenFrontToBack);
+ezRenderData::Category ezDefaultRenderDataCategories::LitMaskedStatic = ezRenderData::RegisterCategory("LitMaskedStatic", &ezRenderSortingFunctions::ByRenderDataThenFrontToBackFunc);
+ezRenderData::Category ezDefaultRenderDataCategories::LitMaskedDynamic = ezRenderData::RegisterCategory("LitMaskedDynamic", &ezRenderSortingFunctions::ByRenderDataThenFrontToBackFunc);
 ezRenderData::Category ezDefaultRenderDataCategories::LitMasked = ezRenderData::RegisterRedirectedCategory("LitMasked", ezDefaultRenderDataCategories::LitMaskedStatic, ezDefaultRenderDataCategories::LitMaskedDynamic);
 
-ezRenderData::Category ezDefaultRenderDataCategories::LitTransparent = ezRenderData::RegisterCategory("LitTransparent", &ezRenderSortingFunctions::BackToFrontThenByRenderData);
-ezRenderData::Category ezDefaultRenderDataCategories::LitForeground = ezRenderData::RegisterCategory("LitForeground", &ezRenderSortingFunctions::ByRenderDataThenFrontToBack);
-ezRenderData::Category ezDefaultRenderDataCategories::LitScreenFX = ezRenderData::RegisterCategory("LitScreenFX", &ezRenderSortingFunctions::BackToFrontThenByRenderData);
+ezRenderData::Category ezDefaultRenderDataCategories::LitTransparent = ezRenderData::RegisterCategory("LitTransparent", &ezRenderSortingFunctions::BackToFrontThenByRenderDataFunc);
+ezRenderData::Category ezDefaultRenderDataCategories::LitForeground = ezRenderData::RegisterCategory("LitForeground", &ezRenderSortingFunctions::ByRenderDataThenFrontToBackFunc);
 
-ezRenderData::Category ezDefaultRenderDataCategories::SimpleOpaque = ezRenderData::RegisterCategory("SimpleOpaque", &ezRenderSortingFunctions::ByRenderDataThenFrontToBack);
-ezRenderData::Category ezDefaultRenderDataCategories::SimpleTransparent = ezRenderData::RegisterCategory("SimpleTransparent", &ezRenderSortingFunctions::BackToFrontThenByRenderData);
-ezRenderData::Category ezDefaultRenderDataCategories::SimpleForeground = ezRenderData::RegisterCategory("SimpleForeground", &ezRenderSortingFunctions::ByRenderDataThenFrontToBack);
+ezRenderData::Category ezDefaultRenderDataCategories::SimpleOpaque = ezRenderData::RegisterCategory("SimpleOpaque", &ezRenderSortingFunctions::ByRenderDataThenFrontToBackFunc);
+ezRenderData::Category ezDefaultRenderDataCategories::SimpleTransparent = ezRenderData::RegisterCategory("SimpleTransparent", &ezRenderSortingFunctions::BackToFrontThenByRenderDataFunc);
+ezRenderData::Category ezDefaultRenderDataCategories::SimpleForeground = ezRenderData::RegisterCategory("SimpleForeground", &ezRenderSortingFunctions::ByRenderDataThenFrontToBackFunc);
 
-ezRenderData::Category ezDefaultRenderDataCategories::Selection = ezRenderData::RegisterCategory("Selection", &ezRenderSortingFunctions::ByRenderDataThenFrontToBack);
-ezRenderData::Category ezDefaultRenderDataCategories::GUI = ezRenderData::RegisterCategory("GUI", &ezRenderSortingFunctions::BackToFrontThenByRenderData);
+ezRenderData::Category ezDefaultRenderDataCategories::Selection = ezRenderData::RegisterCategory("Selection", &ezRenderSortingFunctions::ByRenderDataThenFrontToBackFunc);
+ezRenderData::Category ezDefaultRenderDataCategories::GUI = ezRenderData::RegisterCategory("GUI", &ezRenderSortingFunctions::BackToFrontThenByRenderDataFunc);
 
 //////////////////////////////////////////////////////////////////////////
 
