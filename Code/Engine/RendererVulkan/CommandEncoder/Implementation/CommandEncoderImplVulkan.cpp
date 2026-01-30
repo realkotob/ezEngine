@@ -727,7 +727,7 @@ void ezGALCommandEncoderImplVulkan::PushMarkerPlatform(const char* szMarker)
     ezMemoryUtils::Copy(markerInfo.color.data(), markerColor, EZ_ARRAY_SIZE(markerColor));
     markerInfo.pLabelName = szMarker;
 
-    m_pCommandBuffer->beginDebugUtilsLabelEXT(markerInfo);
+    m_pCommandBuffer->beginDebugUtilsLabelEXT(markerInfo, m_GALDeviceVulkan.GetDispatchContext());
   }
 }
 
@@ -735,7 +735,7 @@ void ezGALCommandEncoderImplVulkan::PopMarkerPlatform()
 {
   if (m_GALDeviceVulkan.GetExtensions().m_bDebugUtilsMarkers)
   {
-    m_pCommandBuffer->endDebugUtilsLabelEXT();
+    m_pCommandBuffer->endDebugUtilsLabelEXT(m_GALDeviceVulkan.GetDispatchContext());
   }
 }
 
@@ -747,7 +747,7 @@ void ezGALCommandEncoderImplVulkan::InsertEventMarkerPlatform(const char* szMark
     vk::DebugUtilsLabelEXT markerInfo = {};
     ezMemoryUtils::Copy(markerInfo.color.data(), markerColor, EZ_ARRAY_SIZE(markerColor));
     markerInfo.pLabelName = szMarker;
-    m_pCommandBuffer->insertDebugUtilsLabelEXT(markerInfo);
+    m_pCommandBuffer->insertDebugUtilsLabelEXT(markerInfo, m_GALDeviceVulkan.GetDispatchContext());
   }
 }
 
