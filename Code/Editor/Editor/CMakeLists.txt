@@ -32,11 +32,3 @@ if (EZ_CMAKE_PLATFORM_WINDOWS_DESKTOP)
     Shcore.lib
   )
 endif()
-
-set(EDITOR_DATA_FOLDER "${CMAKE_CURRENT_SOURCE_DIR}/../../../Data/Tools/ezEditor")
-file(GLOB_RECURSE EDITOR_DATA "${CMAKE_CURRENT_SOURCE_DIR}/../../../Data/Tools/ezEditor/*")
-
-source_group(TREE ${EDITOR_DATA_FOLDER} PREFIX "Editor Data" FILES ${EDITOR_DATA})
-target_sources(${PROJECT_NAME} PRIVATE "${EDITOR_DATA}")
-
-set_source_files_properties(${EDITOR_DATA} PROPERTIES HEADER_FILE_ONLY TRUE)
