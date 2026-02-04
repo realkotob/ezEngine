@@ -284,7 +284,7 @@ void PlacementTask::ExecuteVM()
       const ezUInt32 uiPointIndex = inputPoint.m_uiPointIndex;
       const float fThreshold = pPattern->m_Points[uiPointIndex].threshold;
 
-      if (m_Density[i] >= fThreshold)
+      if (m_Density[i] >= fThreshold && pOutput->m_ObjectsToPlace[inputPoint.m_uiObjectIndex].IsValid())
       {
         m_ValidPoints.PushBack(i);
       }
