@@ -72,7 +72,7 @@ protected:
 
   ezVec2U32 m_vSize = ezVec2U32::MakeZero();
   ezVec2U32 m_vReferenceResolution = ezVec2U32::MakeZero();
-  bool m_bAutobindBlackboards = true;
+  bool m_bAutobindBlackboards = false;
   bool m_bOnDemandUpdate = true;
   bool m_bNeedsUpdate = false;
   ezUInt16 m_uiContextID = 0;
