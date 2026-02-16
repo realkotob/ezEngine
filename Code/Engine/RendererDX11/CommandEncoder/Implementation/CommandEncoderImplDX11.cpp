@@ -891,6 +891,7 @@ void ezGALCommandEncoderImplDX11::SetStencilReferencePlatform(ezUInt8 uiStencilR
   ID3D11DepthStencilState* pState = nullptr;
   m_pDXContext->OMGetDepthStencilState(&pState, nullptr);
   m_pDXContext->OMSetDepthStencilState(pState, m_uiStencilRefValue);
+  EZ_GAL_DX11_RELEASE(pState);
 }
 
 //////////////////////////////////////////////////////////////////////////
