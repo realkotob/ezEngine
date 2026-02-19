@@ -1,16 +1,23 @@
 #pragma once
 
-#include <ToolsFoundation/NodeObject/DocumentNodeManager.h>
+#include <ToolsFoundation/VisualGraph/VisualGraphObjectManager.h>
 
-class ezStateMachinePin : public ezPin
+/// Visual graph pin for state machine nodes.
+///
+/// Represents connection points between states. Output pins trigger transitions, input pins receive them.
+class ezStateMachinePin : public ezVisualGraphPin
 {
-  EZ_ADD_DYNAMIC_REFLECTION(ezStateMachinePin, ezPin);
+  EZ_ADD_DYNAMIC_REFLECTION(ezStateMachinePin, ezVisualGraphPin);
 
 public:
   ezStateMachinePin(Type type, const ezDocumentObject* pObject);
 };
 
-class ezStateMachineNodeManager : public ezDocumentNodeManager
+/// Object manager for state machine graphs.
+///
+/// Manages states and transitions in a state machine. Ensures that exactly one initial state exists
+/// and handles special states like the "Any State" node which can transition to any other state.
+class ezStateMachineNodeManager : public ezVisualGraphObjectManager
 {
 public:
   ezStateMachineNodeManager();
@@ -23,7 +30,7 @@ public:
 
 private:
   virtual bool InternalIsNode(const ezDocumentObject* pObject) const override;
-  virtual ezStatus InternalCanConnect(const ezPin& source, const ezPin& target, CanConnectResult& out_Result) const override;
+  virtual ezStatus InternalCanConnect(const ezVisualGraphPin& source, const ezVisualGraphPin& target, CanConnectResult& out_Result) const override;
 
   virtual void InternalCreatePins(const ezDocumentObject* pObject, NodeInternal& node) override;
 
@@ -33,6 +40,9 @@ private:
   void StructureEventHandler(const ezDocumentObjectStructureEvent& e);
 };
 
+/// Command to designate which state is the initial state in a state machine.
+///
+/// Sets or changes the initial state of a state machine graph. The operation is undoable.
 class ezStateMachine_SetInitialStateCommand : public ezCommand
 {
   EZ_ADD_DYNAMIC_REFLECTION(ezStateMachine_SetInitialStateCommand, ezCommand);

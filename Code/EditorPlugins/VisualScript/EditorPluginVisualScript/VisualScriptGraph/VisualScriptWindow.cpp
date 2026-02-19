@@ -6,8 +6,8 @@
 #include <GuiFoundation/ActionViews/MenuBarActionMapView.moc.h>
 #include <GuiFoundation/ActionViews/ToolBarActionMapView.moc.h>
 #include <GuiFoundation/DockPanels/DocumentPanel.moc.h>
-#include <GuiFoundation/NodeEditor/NodeView.moc.h>
 #include <GuiFoundation/PropertyGrid/PropertyGridWidget.moc.h>
+#include <GuiFoundation/VisualGraph/View.moc.h>
 
 
 ezQtVisualScriptWindow::ezQtVisualScriptWindow(ezDocument* pDocument)
@@ -38,9 +38,9 @@ ezQtVisualScriptWindow::ezQtVisualScriptWindow(ezDocument* pDocument)
 
   {
     m_pScene = new ezQtVisualScriptNodeScene(this);
-    m_pScene->InitScene(static_cast<const ezDocumentNodeManager*>(pDocument->GetObjectManager()));
+    m_pScene->InitScene(static_cast<const ezVisualGraphObjectManager*>(pDocument->GetObjectManager()));
 
-    m_pView = new ezQtNodeView(this);
+    m_pView = new ezQtVisualGraphView(this);
     m_pView->SetScene(m_pScene);
 
     ezQtDocumentPanel* pCentral = new ezQtDocumentPanel(GetContainerWindow()->GetDockManager(), this, pDocument);

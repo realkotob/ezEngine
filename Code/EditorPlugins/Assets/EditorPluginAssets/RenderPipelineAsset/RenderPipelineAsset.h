@@ -1,16 +1,20 @@
 #pragma once
 
 #include <EditorFramework/Assets/AssetDocument.h>
-#include <ToolsFoundation/NodeObject/DocumentNodeManager.h>
+#include <ToolsFoundation/VisualGraph/VisualGraphObjectManager.h>
 
-class ezRenderPipelineNodeManager : public ezDocumentNodeManager
+/// Object manager for render pipeline graphs.
+///
+/// Manages the node graph that defines a rendering pipeline, including render passes, resources, and their connections.
+/// Validates connections to ensure render pipeline integrity.
+class ezRenderPipelineNodeManager : public ezVisualGraphObjectManager
 {
 public:
   virtual bool InternalIsNode(const ezDocumentObject* pObject) const override;
   virtual void InternalCreatePins(const ezDocumentObject* pObject, NodeInternal& ref_node) override;
   virtual void GetCreateableTypes(ezHybridArray<const ezRTTI*, 32>& ref_types) const override;
 
-  virtual ezStatus InternalCanConnect(const ezPin& source, const ezPin& target, CanConnectResult& out_result) const override;
+  virtual ezStatus InternalCanConnect(const ezVisualGraphPin& source, const ezVisualGraphPin& target, CanConnectResult& out_result) const override;
 };
 
 class ezRenderPipelineAssetDocument : public ezAssetDocument

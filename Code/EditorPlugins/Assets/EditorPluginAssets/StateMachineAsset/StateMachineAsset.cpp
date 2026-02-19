@@ -2,7 +2,7 @@
 
 #include <EditorPluginAssets/StateMachineAsset/StateMachineAsset.h>
 #include <EditorPluginAssets/StateMachineAsset/StateMachineGraph.h>
-#include <GuiFoundation/NodeEditor/NodeScene.moc.h>
+#include <GuiFoundation/VisualGraph/Scene.moc.h>
 #include <ToolsFoundation/Serialization/DocumentObjectConverter.h>
 
 // clang-format off
@@ -55,7 +55,7 @@ bool ezStateMachineAssetDocument::CopySelectedObjects(ezAbstractObjectGraph& out
 {
   out_MimeType = "application/ezEditor.StateMachineGraph";
 
-  const ezDocumentNodeManager* pManager = static_cast<const ezDocumentNodeManager*>(GetObjectManager());
+  const ezVisualGraphObjectManager* pManager = static_cast<const ezVisualGraphObjectManager*>(GetObjectManager());
   if (!pManager->CopySelectedObjects(out_objectGraph))
     return false;
 
@@ -73,6 +73,6 @@ bool ezStateMachineAssetDocument::CopySelectedObjects(ezAbstractObjectGraph& out
 
 bool ezStateMachineAssetDocument::Paste(const ezArrayPtr<PasteInfo>& info, const ezAbstractObjectGraph& objectGraph, bool bAllowPickedPosition, ezStringView sMimeType)
 {
-  ezDocumentNodeManager* pManager = static_cast<ezDocumentNodeManager*>(GetObjectManager());
-  return pManager->PasteObjects(info, objectGraph, ezQtNodeScene::GetLastMouseInteractionPos(), bAllowPickedPosition);
+  ezVisualGraphObjectManager* pManager = static_cast<ezVisualGraphObjectManager*>(GetObjectManager());
+  return pManager->PasteObjects(info, objectGraph, ezQtVisualGraphScene::GetLastMouseInteractionPos(), bAllowPickedPosition);
 }

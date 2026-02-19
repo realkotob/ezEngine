@@ -3,9 +3,9 @@
 #include <EditorFramework/GUI/ExposedParameters.h>
 #include <EditorPluginVisualScript/VisualScriptClassAsset/VisualScriptClassAsset.h>
 #include <EditorPluginVisualScript/VisualScriptGraph/VisualScriptCompiler.h>
-#include <GuiFoundation/NodeEditor/NodeScene.moc.h>
-#include <ToolsFoundation/NodeObject/NodeCommandAccessor.h>
+#include <GuiFoundation/VisualGraph/Scene.moc.h>
 #include <ToolsFoundation/Serialization/DocumentObjectConverter.h>
+#include <ToolsFoundation/VisualGraph/VisualGraphCommandAccessor.h>
 
 // clang-format off
 EZ_BEGIN_DYNAMIC_REFLECTED_TYPE(ezVisualScriptClassAssetProperties, 1, ezRTTIDefaultAllocator<ezVisualScriptClassAssetProperties>)
@@ -27,7 +27,7 @@ EZ_END_DYNAMIC_REFLECTED_TYPE;
 ezVisualScriptClassAssetDocument::ezVisualScriptClassAssetDocument(ezStringView sDocumentPath)
   : ezSimpleAssetDocument<ezVisualScriptClassAssetProperties>(EZ_DEFAULT_NEW(ezVisualScriptNodeManager), sDocumentPath, ezAssetDocEngineConnection::None)
 {
-  m_pObjectAccessor = EZ_DEFAULT_NEW(ezNodeCommandAccessor, GetCommandHistory());
+  m_pObjectAccessor = EZ_DEFAULT_NEW(ezVisualGraphCommandAccessor, GetCommandHistory());
 }
 
 ezTransformStatus ezVisualScriptClassAssetDocument::InternalTransformAsset(ezStreamWriter& stream, ezStringView sOutputTag, const ezPlatformProfile* pAssetProfile, const ezAssetFileHeader& AssetHeader, ezBitflags<ezTransformFlags> transformFlags)
@@ -130,21 +130,21 @@ void ezVisualScriptClassAssetDocument::UpdateAssetDocumentInfo(ezAssetDocumentIn
 
 void ezVisualScriptClassAssetDocument::InternalGetMetaDataHash(const ezDocumentObject* pObject, ezUInt64& inout_uiHash) const
 {
-  auto pManager = static_cast<const ezDocumentNodeManager*>(GetObjectManager());
+  auto pManager = static_cast<const ezVisualGraphObjectManager*>(GetObjectManager());
   pManager->GetMetaDataHash(pObject, inout_uiHash);
 }
 
 void ezVisualScriptClassAssetDocument::AttachMetaDataBeforeSaving(ezAbstractObjectGraph& graph) const
 {
   SUPER::AttachMetaDataBeforeSaving(graph);
-  const auto pManager = static_cast<const ezDocumentNodeManager*>(GetObjectManager());
+  const auto pManager = static_cast<const ezVisualGraphObjectManager*>(GetObjectManager());
   pManager->AttachMetaDataBeforeSaving(graph);
 }
 
 void ezVisualScriptClassAssetDocument::RestoreMetaDataAfterLoading(const ezAbstractObjectGraph& graph, bool bUndoable)
 {
   SUPER::RestoreMetaDataAfterLoading(graph, bUndoable);
-  auto pManager = static_cast<ezDocumentNodeManager*>(GetObjectManager());
+  auto pManager = static_cast<ezVisualGraphObjectManager*>(GetObjectManager());
   pManager->RestoreMetaDataAfterLoading(graph, bUndoable);
 }
 
@@ -157,12 +157,12 @@ bool ezVisualScriptClassAssetDocument::CopySelectedObjects(ezAbstractObjectGraph
 {
   out_MimeType = "application/ezEditor.VisualScriptClassGraph";
 
-  const ezDocumentNodeManager* pManager = static_cast<const ezDocumentNodeManager*>(GetObjectManager());
+  const ezVisualGraphObjectManager* pManager = static_cast<const ezVisualGraphObjectManager*>(GetObjectManager());
   return pManager->CopySelectedObjects(out_objectGraph);
 }
 
 bool ezVisualScriptClassAssetDocument::Paste(const ezArrayPtr<PasteInfo>& info, const ezAbstractObjectGraph& objectGraph, bool bAllowPickedPosition, ezStringView sMimeType)
 {
-  ezDocumentNodeManager* pManager = static_cast<ezDocumentNodeManager*>(GetObjectManager());
-  return pManager->PasteObjects(info, objectGraph, ezQtNodeScene::GetLastMouseInteractionPos(), bAllowPickedPosition);
+  ezVisualGraphObjectManager* pManager = static_cast<ezVisualGraphObjectManager*>(GetObjectManager());
+  return pManager->PasteObjects(info, objectGraph, ezQtVisualGraphScene::GetLastMouseInteractionPos(), bAllowPickedPosition);
 }

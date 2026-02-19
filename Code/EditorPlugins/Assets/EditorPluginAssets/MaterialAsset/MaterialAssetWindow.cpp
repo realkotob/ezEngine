@@ -12,8 +12,8 @@
 #include <GuiFoundation/ActionViews/MenuBarActionMapView.moc.h>
 #include <GuiFoundation/ActionViews/ToolBarActionMapView.moc.h>
 #include <GuiFoundation/DockPanels/DocumentPanel.moc.h>
-#include <GuiFoundation/NodeEditor/NodeView.moc.h>
 #include <GuiFoundation/PropertyGrid/PropertyGridWidget.moc.h>
+#include <GuiFoundation/VisualGraph/View.moc.h>
 #include <ToolsFoundation/Application/ApplicationServices.h>
 
 ////////////////////////////////////////////////////////////////////////
@@ -152,9 +152,9 @@ ezQtMaterialAssetDocumentWindow::ezQtMaterialAssetDocumentWindow(ezMaterialAsset
     QSplitter* pSplitter = new QSplitter(Qt::Orientation::Horizontal, m_pVsePanel);
 
     m_pScene = new ezQtVisualShaderScene(this);
-    m_pScene->InitScene(static_cast<const ezDocumentNodeManager*>(pDocument->GetObjectManager()));
+    m_pScene->InitScene(static_cast<const ezVisualGraphObjectManager*>(pDocument->GetObjectManager()));
 
-    m_pNodeView = new ezQtNodeView(m_pVsePanel);
+    m_pNodeView = new ezQtVisualGraphView(m_pVsePanel);
     m_pNodeView->SetScene(m_pScene);
     pSplitter->addWidget(m_pNodeView);
 
