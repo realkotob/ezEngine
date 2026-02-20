@@ -203,10 +203,8 @@ private:
 
     ezFileSystem::AddDataDirectory(">eztest/", "ImageComparisonDataDir", "imgout", ezDataDirUsage::AllowWrites).IgnoreResult();
 
-    ezStringBuilder overrideFolder("Images_Reference_", EZ_PLATFORM_NAME);
-
     // On linux we use CPU based BC6 and BC7 compression, which sometimes gives slightly different results from the GPU compression on Windows.
-    ezTestFramework::GetInstance()->SetImageReferenceOverrideFolderName(overrideFolder);
+    ezTestFramework::GetInstance()->SetImageReferenceTagsFromEnvironment(EZ_PLATFORM_NAME, {}, {});
 
     return EZ_SUCCESS;
   }

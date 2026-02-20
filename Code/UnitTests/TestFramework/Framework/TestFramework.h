@@ -112,7 +112,24 @@ public:
   void GenerateComparisonImageName(ezUInt32 uiImageNumber, ezStringBuilder& ref_sImgName);
   void GetCurrentComparisonImageName(ezStringBuilder& ref_sImgName);
   void SetImageReferenceFolderName(const char* szFolderName);
-  void SetImageReferenceOverrideFolderName(const char* szFolderName);
+
+  /// \brief Registers a tag that will be used as a filename suffix when looking for reference images.
+  ///
+  /// During image comparison, after trying the base image name, all registered tags and their combinations
+  /// are tried as suffixes (e.g. "image-amd.png", "image-vulkan.png", "image-amd-vulkan.png").
+  /// Call ClearImageReferenceTags() first when reinitializing (e.g. after device setup).
+  void AddImageReferenceTag(const char* szTag);
+
+  /// \brief Removes all previously registered image reference tags.
+  void ClearImageReferenceTags();
+
+  /// \brief Derives and sets the appropriate image reference tags from platform, renderer, and GPU adapter name.
+  ///
+  /// Clears any previously set tags and adds tags for the current environment, such as the platform name, if it differs from
+  /// windows ("linux", "osx", "android"), the renderer ("vulkan"), and GPU vendor ("amd", "nvidia", "intel"),
+  /// or special renderer variants ("d3dref", "llvmpipe", "swiftshader").
+  /// Pass empty strings for \a sRenderer and \a sAdapterName when not using a renderer.
+  void SetImageReferenceTagsFromEnvironment(ezStringView sPlatform, ezStringView sRenderer, ezStringView sAdapterName);
 
   /// \brief Writes an Html file that contains test information and an image diff view for failed image comparisons.
   void WriteImageDiffHtml(const char* szFileName, const ezImage& referenceImgRgb, const ezImage& referenceImgAlpha, const ezImage& capturedImgRgb, const ezImage& capturedImgAlpha, const ezImage& diffImgRgb, const ezImage& diffImgAlpha, ezUInt32 uiError, ezUInt32 uiThreshold, ezUInt8 uiMinDiffRgb,
@@ -218,7 +235,7 @@ private:
   ezUInt32 m_uiComparisonDepthImageNumber = 0;
 
   std::string m_sImageReferenceFolderName = "Images_Reference";
-  std::string m_sImageReferenceOverrideFolderName;
+  ezDynamicArray<ezString> m_ImageReferenceTags;
 
 protected:
   ezUInt32 m_uiCurrentTestIndex = ezInvalidIndex;
