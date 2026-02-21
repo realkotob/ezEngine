@@ -157,10 +157,11 @@ ezResult ezJoltMeshMapping::Deserialize(ezStreamReader& inout_stream)
 //////////////////////////////////////////////////////////////////////////
 
 // clang-format off
-EZ_BEGIN_COMPONENT_TYPE(ezJoltGenerateCollisionComponent, 1, ezComponentMode::Static)
+EZ_BEGIN_COMPONENT_TYPE(ezJoltGenerateCollisionComponent, 2, ezComponentMode::Static)
 {
   EZ_BEGIN_PROPERTIES
   {
+    EZ_MEMBER_PROPERTY("CollisionLayer", m_uiCollisionLayer)->AddAttributes(new ezDynamicEnumAttribute("PhysicsCollisionLayer")),
     EZ_ARRAY_ACCESSOR_PROPERTY("MeshMappings", Reflection_GetMeshMappingCount, Reflection_GetMeshMapping, Reflection_SetMeshMapping, Reflection_InsertMeshMapping, Reflection_RemoveMeshMapping),
   }
   EZ_END_PROPERTIES;
@@ -194,16 +195,22 @@ void ezJoltGenerateCollisionComponent::SerializeComponent(ezWorldWriter& inout_s
 
   s.WriteArray(m_MeshMappings).IgnoreResult();
   s << m_uiStableId;
+  s << m_uiCollisionLayer;
 }
 
 void ezJoltGenerateCollisionComponent::DeserializeComponent(ezWorldReader& inout_stream)
 {
   SUPER::DeserializeComponent(inout_stream);
-  // const ezUInt32 uiVersion = inout_stream.GetComponentTypeVersion(GetStaticRTTI());
+  const ezUInt32 uiVersion = inout_stream.GetComponentTypeVersion(GetStaticRTTI());
   auto& s = inout_stream.GetStream();
 
   s.ReadArray(m_MeshMappings).IgnoreResult();
   s >> m_uiStableId;
+
+  if (uiVersion >= 2)
+  {
+    s >> m_uiCollisionLayer;
+  }
 }
 
 void ezJoltGenerateCollisionComponent::OnDeactivated()
@@ -336,6 +343,7 @@ void ezJoltGenerateCollisionComponent::FinalizeGeneration()
   EZ_ASSERT_DEV(!pStaticActorComponent->WasCreatedByPrefab(), "Should have been handled above");
   ezJoltMeshResourceHandle hCollisionMesh = ezResourceManager::LoadResource<ezJoltMeshResource>(m_sCollisionMeshPath);
   pStaticActorComponent->SetMesh(hCollisionMesh);
+  pStaticActorComponent->m_uiCollisionLayer = m_uiCollisionLayer;
 }
 
 

@@ -61,6 +61,8 @@ public:
   /// Render meshes without a mapping won't have collision.
   ezArrayPtr<const ezJoltMeshMapping> GetMeshMappings() const { return m_MeshMappings; }                         // [ property ]
 
+  ezUInt8 m_uiCollisionLayer = 0;                                                                                // [ property ]
+
 private:
   ezUInt32 Reflection_GetMeshMappingCount() const { return m_MeshMappings.GetCount(); }                          // [ property ]
   const ezJoltMeshMapping& Reflection_GetMeshMapping(ezUInt32 uiIndex) const { return m_MeshMappings[uiIndex]; } // [ property ]
