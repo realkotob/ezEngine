@@ -113,7 +113,10 @@ void* ezJoltCore::JoltMalloc(size_t inSize)
 
 void ezJoltCore::JoltFree(void* inBlock)
 {
-  ezJoltCore::s_pAllocator->Deallocate(inBlock);
+  if (inBlock)
+  {
+    ezJoltCore::s_pAllocator->Deallocate(inBlock);
+  }
 }
 
 void* ezJoltCore::JoltReallocate(void* inBlock, size_t inOldSize, size_t inNewSize)
