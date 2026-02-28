@@ -516,6 +516,7 @@ void ezWorld::Update()
     ProcessUpdateFunctionsToRegister();
 
     ProcessQueuedMessages(ezObjectMsgQueueType::AfterInitialized);
+    ProcessLocalBoundsUpdateQueue();
   }
 
   // pre-async phase
@@ -542,6 +543,7 @@ void ezWorld::Update()
     EZ_PROFILE_SCOPE("Post-Async Phase");
     ProcessQueuedMessages(ezObjectMsgQueueType::PostAsync);
     UpdateSynchronous(m_Data.m_UpdateFunctions[ezWorldUpdatePhase::PostAsync]);
+    ProcessLocalBoundsUpdateQueue();
   }
 
   // delete dead objects and update the object hierarchy
@@ -1547,6 +1549,27 @@ void ezWorld::ProcessResourceReloadFunctions()
   }
 
   m_Data.m_NeedReload.Clear();
+}
+
+void ezWorld::QueueLocalBoundsUpdate(ezGameObjectHandle hObject)
+{
+  EZ_LOCK(m_Data.m_BoundsUpdateMutex);
+  m_Data.m_BoundsUpdateQueue.PushBack(hObject);
+}
+
+void ezWorld::ProcessLocalBoundsUpdateQueue()
+{
+  EZ_LOCK(m_Data.m_BoundsUpdateMutex);
+  for (auto& hObj : m_Data.m_BoundsUpdateQueue)
+  {
+    ezGameObject* pObj;
+    if (TryGetObject(hObj, pObj))
+    {
+      pObj->UpdateLocalBounds();
+    }
+  }
+
+  m_Data.m_BoundsUpdateQueue.Clear();
 }
 
 void ezWorld::SetMaxInitializationTimePerFrame(ezTime maxInitTime)
