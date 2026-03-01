@@ -39,7 +39,7 @@ inline ezResult ezSimdQuatd::GetRotationAxisAndAngle(ezSimdVec4d& ref_vAxis, ezS
 {
   ///\todo optimize
   const ezAngleTemplate<double> acos = ezMath::ACos<double>(m_v.w().Max(-1).Min(1));
-  const float d = ezMath::Sin(acos);
+  const double d = ezMath::Sin(acos);
 
   if (d < fEpsilon)
   {
