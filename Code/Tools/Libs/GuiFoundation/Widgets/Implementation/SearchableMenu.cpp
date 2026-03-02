@@ -95,6 +95,7 @@ QStandardItem* ezQtSearchableMenu::CreateCategoryMenu(ezStringView sCategory)
 
   QStandardItem* pThisItem = new QStandardItem(sPath.GetData());
   pThisItem->setFlags(Qt::ItemFlag::ItemIsEnabled | Qt::ItemFlag::ItemIsSelectable);
+  pThisItem->setData(ezMakeQString(sPath).toLower(), SortRole);
 
   pParentMenu->appendRow(pThisItem);
 
