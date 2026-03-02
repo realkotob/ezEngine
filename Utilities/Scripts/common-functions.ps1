@@ -1,6 +1,6 @@
 function global:Find-EditorProcessor
 {
-	$VsVersions = @("2022")
+	$VsVersions = @("2026", "2022")
 	$Configurations = @("Debug", "Dev", "Shipping")
 	
 	# prefer newer version and faster config
