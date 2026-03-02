@@ -170,6 +170,8 @@ EZ_BEGIN_STATIC_REFLECTED_TYPE(ezVec3, ezNoBase, 1, ezRTTINoAllocator)
     EZ_SCRIPT_FUNCTION_PROPERTY(Make, In, "X", In, "Y", In, "Z")->AddFlags(ezPropertyFlags::PureFunction),
     EZ_SCRIPT_FUNCTION_PROPERTY(GetLength<float>),
     EZ_SCRIPT_FUNCTION_PROPERTY(GetLengthSquared),
+    EZ_SCRIPT_FUNCTION_PROPERTY(GetDistanceTo<float>, In, "v"),
+    EZ_SCRIPT_FUNCTION_PROPERTY(GetSquaredDistanceTo<float>, In, "v"),
     EZ_SCRIPT_FUNCTION_PROPERTY(GetNormalized<float>),
     EZ_SCRIPT_FUNCTION_PROPERTY(Dot, In, "v"),
     EZ_SCRIPT_FUNCTION_PROPERTY(CrossRH, In, "v"),
