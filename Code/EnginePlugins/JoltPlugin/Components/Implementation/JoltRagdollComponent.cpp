@@ -211,6 +211,8 @@ void ezJoltRagdollComponent::OnSimulationStarted()
 {
   SUPER::OnSimulationStarted();
 
+  m_pJoltWorldModule = GetWorld()->GetOrCreateModule<ezJoltWorldModule>();
+
   if (m_StartMode == ezJoltRagdollStartMode::WithBindPose)
   {
     CreateLimbsFromBindPose();
@@ -452,7 +454,7 @@ void ezJoltRagdollComponent::SetGravityFactor(float fFactor)
 
   for (ezUInt32 i = 0; i < m_pRagdoll->GetBodyCount(); ++i)
   {
-    m_pJoltSystem->GetBodyInterface().SetGravityFactor(m_pRagdoll->GetBodyID(i), m_fGravityFactor);
+    m_pJoltWorldModule->GetJoltSystem()->GetBodyInterface().SetGravityFactor(m_pRagdoll->GetBodyID(i), m_fGravityFactor);
   }
 
   m_pRagdoll->Activate();
@@ -480,14 +482,14 @@ void ezJoltRagdollComponent::SetAnimMode(ezEnum<ezJoltRagdollAnimMode> mode)
       for (ezUInt32 i = 0; i < m_pRagdoll->GetBodyCount(); ++i)
       {
         // in the 'Controlled' mode, disable gravity, so that it doesn't affect the pose
-        m_pJoltSystem->GetBodyInterface().SetGravityFactor(m_pRagdoll->GetBodyID(i), 0.0f);
+        m_pJoltWorldModule->GetJoltSystem()->GetBodyInterface().SetGravityFactor(m_pRagdoll->GetBodyID(i), 0.0f);
       }
     }
     else
     {
       for (ezUInt32 i = 0; i < m_pRagdoll->GetBodyCount(); ++i)
       {
-        m_pJoltSystem->GetBodyInterface().SetGravityFactor(m_pRagdoll->GetBodyID(i), m_fGravityFactor);
+        m_pJoltWorldModule->GetJoltSystem()->GetBodyInterface().SetGravityFactor(m_pRagdoll->GetBodyID(i), m_fGravityFactor);
       }
     }
   }
@@ -725,7 +727,7 @@ ezVec3 ezJoltRagdollComponent::RetrieveRagdollPose()
   const JPH::RVec3 vCurPosition = ezJoltConversionUtils::ToVec3(GetOwner()->GetGlobalPosition());
 
   const int body_count = (int)m_pRagdoll->GetBodyCount();
-  JPH::BodyLockMultiRead lock(static_cast<const JPH::BodyLockInterface&>(m_pJoltSystem->GetBodyLockInterface()), m_pRagdoll->GetBodyIDs().data(), body_count);
+  JPH::BodyLockMultiRead lock(static_cast<const JPH::BodyLockInterface&>(m_pJoltWorldModule->GetJoltSystem()->GetBodyLockInterface()), m_pRagdoll->GetBodyIDs().data(), body_count);
 
   const JPH::Body* root = lock.GetBody(0);
   JPH::RMat44 root_transform = root->GetWorldTransform();
@@ -815,10 +817,8 @@ void ezJoltRagdollComponent::CreateLimbsFromPose(const ezMsgAnimationPoseUpdated
   const ezVec3 vObjectScale = GetOwner()->GetGlobalScaling();
   const float fObjectScale = ezMath::Max(vObjectScale.x, vObjectScale.y, vObjectScale.z);
 
-  ezJoltWorldModule& worldModule = *GetWorld()->GetOrCreateModule<ezJoltWorldModule>();
-  m_pJoltSystem = worldModule.GetJoltSystem(); // cache this for later
-  m_uiObjectFilterID = worldModule.CreateObjectFilterID();
-  m_uiJoltUserDataIndex = worldModule.AllocateUserData(m_pJoltUserData);
+  m_uiObjectFilterID = m_pJoltWorldModule->CreateObjectFilterID();
+  m_uiJoltUserDataIndex = m_pJoltWorldModule->AllocateUserData(m_pJoltUserData);
   m_pJoltUserData->Init(this);
 
   ezResourceLock<ezSkeletonResource> pSkeletonResource(m_hSkeleton, ezResourceAcquireMode::BlockTillLoaded);
@@ -834,7 +834,7 @@ void ezJoltRagdollComponent::CreateLimbsFromPose(const ezMsgAnimationPoseUpdated
   ragdollSettings->mSkeleton = new JPH::Skeleton(); // TODO: share this in the resource
   ragdollSettings->mSkeleton->GetJoints().reserve(ragdollSettings->mParts.size());
 
-  CreateAllLimbs(*pSkeletonResource.GetPointer(), pose, worldModule, fObjectScale, ragdollSettings);
+  CreateAllLimbs(*pSkeletonResource.GetPointer(), pose, *m_pJoltWorldModule, fObjectScale, ragdollSettings);
 
   {
     const float fInitialMass = ezJoltCore::GetWeightCategoryConfig().GetMassForWeightCategory(m_uiWeightCategory, 50.0f, m_fWeightMass, m_fWeightScale);
@@ -855,12 +855,12 @@ void ezJoltRagdollComponent::CreateLimbsFromPose(const ezMsgAnimationPoseUpdated
   ragdollSettings->CalculateBodyIndexToConstraintIndex();
   ragdollSettings->CalculateConstraintIndexToBodyIdxPair();
 
-  m_pRagdoll = ragdollSettings->CreateRagdoll(m_uiObjectFilterID, reinterpret_cast<ezUInt64>(m_pJoltUserData), m_pJoltSystem);
+  m_pRagdoll = ragdollSettings->CreateRagdoll(m_uiObjectFilterID, reinterpret_cast<ezUInt64>(m_pJoltUserData), m_pJoltWorldModule->GetJoltSystem());
 
   m_pRagdoll->AddRef();
   m_pRagdoll->AddToPhysicsSystem(JPH::EActivation::Activate);
 
-  ApplyInitialImpulse(worldModule, pSkeletonResource->GetDescriptor().m_fMaxImpulse);
+  ApplyInitialImpulse(*m_pJoltWorldModule, pSkeletonResource->GetDescriptor().m_fMaxImpulse);
 }
 
 void ezJoltRagdollComponent::ConfigureRagdollPart(void* pRagdollSettingsPart, const ezTransform& globalTransform, ezUInt8 uiCollisionLayer, ezJoltWorldModule& worldModule)

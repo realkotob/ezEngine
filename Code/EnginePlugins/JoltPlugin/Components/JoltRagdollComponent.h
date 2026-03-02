@@ -253,8 +253,8 @@ protected:
   ezUInt32 m_uiJoltUserDataIndex = ezInvalidIndex;
   ezJoltUserData* m_pJoltUserData = nullptr;
 
+  ezJoltWorldModule* m_pJoltWorldModule = nullptr;
   JPH::Ragdoll* m_pRagdoll = nullptr;
-  JPH::PhysicsSystem* m_pJoltSystem = nullptr;
   ezDynamicArray<Limb> m_Limbs;
   ezTime m_ElapsedTimeSinceUpdate = ezTime::MakeZero();
 
