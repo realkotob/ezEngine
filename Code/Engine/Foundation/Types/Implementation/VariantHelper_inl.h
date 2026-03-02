@@ -1,7 +1,7 @@
 
 
 // for some reason MSVC does not accept the template keyword here
-#if EZ_ENABLED(EZ_COMPILER_MSVC_PURE)
+#if EZ_ENABLED(EZ_COMPILER_MSVC_PURE) && (_MSC_VER < 1950)
 #  define CALL_FUNCTOR(functor, type) return functor.operator()<type>(std::forward<Args>(args)...)
 #else
 #  define CALL_FUNCTOR(functor, type) return functor.template operator()<type>(std::forward<Args>(args)...)
