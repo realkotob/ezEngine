@@ -71,11 +71,6 @@ jobs:
         shell: pwsh
         run: repo\Utilities\Scripts\transform-all-projects.ps1
 
-      - name: Remove Unwanted Files
-        run: |
-          Get-ChildItem * -Include *.pdb -Recurse | Remove-Item
-          Get-ChildItem repo\Data\Samples\* -Include Build -Recurse | Remove-Item -Recurse -Force
-
       - name: Generate Package
         run: |
           mkdir _package
@@ -89,6 +84,10 @@ jobs:
           xcopy repo\Code _package\Code /s
 
           xcopy template_repo\package _package /s /y
+
+      - name: Remove Unwanted Files
+        shell: pwsh
+        run: repo\Utilities\Scripts\remove-release-files.ps1 -RootDir _package
 
       - name: Create Zip Archive
         run: |
