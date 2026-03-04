@@ -280,7 +280,7 @@ void ezMeshComponentBase::SetCustomData(const ezVec4& vData)
 {
   // Use a bitwise comparison since some systems store arbitrary data casted to floats which can look like NaNs.
   // These would compare false or trigger the NaN check in ezMath when comparing the vectors.
-  if (ezMemoryUtils::IsEqual(&m_vCustomData, &vData))
+  if (!ezMemoryUtils::IsEqual(&m_vCustomData, &vData))
   {
     m_vCustomData = vData;
 
