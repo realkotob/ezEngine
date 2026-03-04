@@ -24,7 +24,16 @@ void ezFallbackGameState::OnActivation(ezWorld* pWorld, ezStringView sStartPosit
 
   // if we already have a scene (editor use case), just use that and don't create any other world
   if (pWorld != nullptr)
+  {
+    m_bAllowOpenMenu = false;
     return;
+  }
+
+  // if we allow the player to open the menu via the OS key, we want OS not to handle these keys (Windows key)
+  if (auto* pDevice = ezInputManager::GetInputDeviceOfType<ezInputDeviceMouseKeyboard>())
+  {
+    pDevice->SetDisableOSHotkeys(true);
+  }
 
   // otherwise we need to load a scene
 
@@ -310,7 +319,7 @@ void ezFallbackGameState::FindAvailableScenes()
   ezStringBuilder sScenePath;
 
   for (ezFileSystem::StartSearch(fsit, "", ezFileSystemIteratorFlags::ReportFilesRecursive);
-       fsit.IsValid(); fsit.Next())
+    fsit.IsValid(); fsit.Next())
   {
     fsit.GetStats().GetFullPath(sScenePath);
 
@@ -345,9 +354,12 @@ bool ezFallbackGameState::DisplayMenu()
     return false;
   }
 
-  if (ezInputManager::GetInputSlotState(ezInputSlot_KeyLeftWin) == ezKeyState::Pressed || ezInputManager::GetInputSlotState(ezInputSlot_KeyRightWin) == ezKeyState::Pressed)
+  if (m_bAllowOpenMenu)
   {
-    m_bShowMenu = !m_bShowMenu;
+    if (ezInputManager::GetInputSlotState(ezInputSlot_KeyLeftWin) == ezKeyState::Pressed || ezInputManager::GetInputSlotState(ezInputSlot_KeyRightWin) == ezKeyState::Pressed)
+    {
+      m_bShowMenu = !m_bShowMenu;
+    }
   }
 
   if (m_State == State::Ok && !m_bShowMenu)

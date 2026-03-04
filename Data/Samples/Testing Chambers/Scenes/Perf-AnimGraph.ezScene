@@ -11,7 +11,7 @@ o
 		s %AssetType{"Scene"}
 		VarArray %Dependencies{}
 		Uuid %DocumentID{u4{2505730330314084745,5650601960057022934}}
-		u4 %Hash{8464948333123445077}
+		u4 %Hash{777786165305624731}
 		VarArray %MetaInfo{}
 		VarArray %Outputs{}
 		VarArray %PackageDeps
@@ -20394,7 +20394,7 @@ o
 		s %FollowMode{"ezFollowSplineMode::FullRotation"}
 		f %LookAhead{0x0000A040}
 		Angle %MaxTilt{f{0x920A063F}}
-		s %Mode{"ezPropertyAnimMode::Once"}
+		s %Mode{"ezPropertyAnimMode::Loop"}
 		b %Running{1}
 		f %Smoothing{0x0000003F}
 		f %Speed{0x00002041}

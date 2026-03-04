@@ -51,6 +51,7 @@ protected:
 
   State m_State = State::Ok;
   bool m_bShowMenu = false;
+  bool m_bAllowOpenMenu = true;
 
   void FindAvailableScenes();
   bool DisplayMenu();
