@@ -1,6 +1,7 @@
 #include <EditorPluginAssets/EditorPluginAssetsPCH.h>
 
 #include <EditorFramework/Actions/AssetActions.h>
+#include <EditorFramework/Actions/CameraModeSwitchActions.h>
 #include <EditorFramework/Actions/CommonAssetActions.h>
 #include <EditorFramework/Actions/GameObjectContextActions.h>
 #include <EditorFramework/Actions/GameObjectDocumentActions.h>
@@ -153,6 +154,7 @@ static void ConfigureMeshAsset()
   {
     ezActionMapManager::RegisterActionMap("MeshAssetToolBar", "AssetToolbar");
     ezCommonAssetActions::MapToolbarActions("MeshAssetToolBar", ezCommonAssetUiState::Grid);
+    ezCameraModeSwitchActions::MapToolbarActions("MeshAssetToolBar");
   }
 
   // View Tool Bar
@@ -337,6 +339,7 @@ static void ConfigureAnimatedMeshAsset()
   {
     ezActionMapManager::RegisterActionMap("AnimatedMeshAssetToolBar", "AssetToolbar");
     ezCommonAssetActions::MapToolbarActions("AnimatedMeshAssetToolBar", ezCommonAssetUiState::Grid);
+    ezCameraModeSwitchActions::MapToolbarActions("AnimatedMeshAssetToolBar");
   }
 
   // View Tool Bar
