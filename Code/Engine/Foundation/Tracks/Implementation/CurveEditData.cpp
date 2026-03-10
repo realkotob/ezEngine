@@ -278,3 +278,6 @@ public:
 };
 
 ezCurve1DAssetData_1_2 g_ezCurve1DAssetData_1_2;
+
+
+EZ_STATICLINK_FILE(Foundation, Foundation_Tracks_Implementation_CurveEditData);
