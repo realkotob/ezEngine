@@ -1,8 +1,10 @@
 #include <EditorFramework/EditorFrameworkPCH.h>
 
 #include <EditorFramework/DocumentWindow/EngineDocumentWindow.moc.h>
+#include <EditorFramework/DocumentWindow/EngineViewWidget.moc.h>
 #include <EditorFramework/Manipulators/SplineManipulatorAdapter.h>
 #include <ToolsFoundation/Object/ObjectAccessorBase.h>
+#include <ToolsFoundation/Utilities/StringAlgorithms.h>
 
 ezSplineManipulatorAdapter::ezSplineManipulatorAdapter() = default;
 ezSplineManipulatorAdapter::~ezSplineManipulatorAdapter() = default;
@@ -125,7 +127,12 @@ void ezSplineManipulatorAdapter::Update()
 
 void ezSplineManipulatorAdapter::ClickGizmoEventHandler(const ezGizmoEvent& e)
 {
-  int index = -1;
+  if (e.m_Type != ezGizmoEvent::Type::Interaction)
+    return;
+
+  e.m_pGizmo->GetOwnerView()->ClearLastPickedObject();
+
+  ezInt32 index = -1;
 
   for (ezUInt32 i = 0; i < m_Gizmos.GetCount(); ++i)
   {
@@ -147,10 +154,9 @@ void ezSplineManipulatorAdapter::ClickGizmoEventHandler(const ezGizmoEvent& e)
   }
 
   ezStringBuilder sNewNodeName;
-  sNewNodeName.SetFormat("{}", index);
-  sNewNodeName = MakeUniqueName(sNewNodeName);
+  MakeUniqueName(index, sNewNodeName);
 
-  index = ezMath::Min<int>(index, m_Spline.m_ControlPoints.GetCount());
+  index = ezMath::Min<ezInt32>(index, m_Spline.m_ControlPoints.GetCount());
 
   auto pObjectAcessor = GetObjectAccessor();
 
@@ -212,6 +218,58 @@ void ezSplineManipulatorAdapter::ClickGizmoEventHandler(const ezGizmoEvent& e)
   pObjectAcessor->FinishTransaction();
 
   Update();
+
+  // Defer the selection change to avoid destroying this adapter (and its gizmos) while
+  // their event dispatch is still on the call stack. SetSelection triggers ClearAdapters
+  // via the manipulator manager, which deletes 'this'. The document outlives the adapter.
+  const ezDocument* pDoc = m_pObject->GetDocumentObjectManager()->GetDocument();
+  QTimer::singleShot(0, [pDoc, gameObjectUuid]()
+    {
+      if (auto pSelMan = pDoc->GetSelectionManager())
+      {
+        if (const ezDocumentObject* pObj = pDoc->GetObjectManager()->GetObject(gameObjectUuid))
+        {
+          pSelMan->SetSelection(pObj);
+        }
+      } });
+}
+
+/// Returns the position on the given spline segment at 50% arc-length.
+/// Uses uniform sampling with a local parameter t in [0, 1] to avoid the
+/// Bezier overshoot that occurs with EvaluatePosition(segmentIndex + 0.5f)
+/// when adjacent segments have very different lengths.
+static ezVec3 EvaluateSegmentArcLengthMidpoint(const ezSpline& spline, ezUInt32 uiSegment)
+{
+  constexpr ezUInt32 uiNumSamples = 16;
+
+  float fCumulative[uiNumSamples + 1];
+  fCumulative[0] = 0.0f;
+
+  ezSimdVec4f vPrev = spline.EvaluatePosition(uiSegment, 0.0f);
+  for (ezUInt32 k = 1; k <= uiNumSamples; ++k)
+  {
+    const float fLocalT = static_cast<float>(k) / uiNumSamples;
+    const ezSimdVec4f vCur = spline.EvaluatePosition(uiSegment, fLocalT);
+    fCumulative[k] = fCumulative[k - 1] + (vCur - vPrev).GetLength<3>();
+    vPrev = vCur;
+  }
+
+  const float fHalfLength = fCumulative[uiNumSamples] * 0.5f;
+
+  if (fHalfLength < ezMath::SmallEpsilon<float>())
+    return ezSimdConversion::ToVec3(spline.EvaluatePosition(uiSegment, 0.5f));
+
+  for (ezUInt32 k = 1; k <= uiNumSamples; ++k)
+  {
+    if (fCumulative[k] >= fHalfLength)
+    {
+      const float fFrac = ezMath::Unlerp(fCumulative[k - 1], fCumulative[k], fHalfLength);
+      const float fLocalT = (static_cast<float>(k - 1) + fFrac) / uiNumSamples;
+      return ezSimdConversion::ToVec3(spline.EvaluatePosition(uiSegment, fLocalT));
+    }
+  }
+
+  return ezSimdConversion::ToVec3(spline.EvaluatePosition(uiSegment, 0.5f));
 }
 
 void ezSplineManipulatorAdapter::UpdateGizmoTransform()
@@ -224,12 +282,14 @@ void ezSplineManipulatorAdapter::UpdateGizmoTransform()
     return t;
   };
 
+  const ezUInt32 uiNumCPs = m_Spline.m_ControlPoints.GetCount();
+
   ezUInt32 uiFirstGizmo = 0;
   ezUInt32 uiNumGizmos = m_Gizmos.GetCount();
 
   if (!m_Spline.m_bClosed)
   {
-    if (m_Spline.m_ControlPoints.IsEmpty())
+    if (uiNumCPs == 0)
     {
       m_Gizmos.PeekFront().SetTransformation(MakeGizmoTransform(ezVec3(-0.5, 0, 0)));
       m_Gizmos.PeekBack().SetTransformation(MakeGizmoTransform(ezVec3(0.5, 0, 0)));
@@ -256,7 +316,7 @@ void ezSplineManipulatorAdapter::UpdateGizmoTransform()
   {
     auto& gizmo = m_Gizmos[uiFirstGizmo + i];
 
-    const ezVec3 offset = ezSimdConversion::ToVec3(m_Spline.EvaluatePosition(i + 0.5f));
+    const ezVec3 offset = EvaluateSegmentArcLengthMidpoint(m_Spline, i);
     gizmo.SetTransformation(MakeGizmoTransform(offset));
   }
 }
@@ -298,35 +358,43 @@ void ezSplineManipulatorAdapter::ConfigureGizmos()
   UpdateGizmoTransform();
 }
 
-ezString ezSplineManipulatorAdapter::MakeUniqueName(ezStringView sSuggestedName)
+void ezSplineManipulatorAdapter::MakeUniqueName(ezInt32 iIndex, ezStringBuilder& ref_sName)
 {
-  auto IsUniqueName = [&](ezStringView sName)
+  const ezSplineManipulatorAttribute* pAttr = static_cast<const ezSplineManipulatorAttribute*>(m_pManipulatorAttr);
+  ezVariantArray nodeNames;
+  m_pObject->GetTypeAccessor().GetValues(pAttr->GetNodesProperty(), nodeNames);
+
+  if (nodeNames.IsEmpty())
   {
-    const ezSplineManipulatorAttribute* pAttr = static_cast<const ezSplineManipulatorAttribute*>(m_pManipulatorAttr);
+    ref_sName = "1";
+    return;
+  }
 
-    ezVariantArray nodeNames;
-    m_pObject->GetTypeAccessor().GetValues(pAttr->GetNodesProperty(), nodeNames);
-
-    for (auto& v : nodeNames)
+  auto IsUniqueName = [&](ezStringView sName) -> bool
+  {
+    for (const auto& v : nodeNames)
     {
       if (v.Get<ezHashedString>() == sName)
         return false;
     }
-
     return true;
   };
 
-  if (IsUniqueName(sSuggestedName))
-    return sSuggestedName;
+  const ezStringView sLeft = (iIndex > 0) ? nodeNames[iIndex - 1].Get<ezHashedString>().GetView() : ezStringView();
+  const ezStringView sRight = (iIndex < (ezInt32)nodeNames.GetCount()) ? nodeNames[iIndex].Get<ezHashedString>().GetView() : ezStringView();
 
-  ezUInt32 uiSuffixIndex = 0;
-  ezStringBuilder sCombinedName;
+  ezStringAlgorithms::ComputeNameBetween(sLeft, sRight, ref_sName);
 
+  if (IsUniqueName(ref_sName))
+    return;
+
+  // Fallback: append an incrementing sub-index until the name is unique
+  ezStringBuilder sBase = ref_sName;
+  ezUInt32 uiSuffix = 1;
   do
   {
-    ++uiSuffixIndex;
-    sCombinedName.SetFormat("{}.{}", sSuggestedName, uiSuffixIndex);
-  } while (!IsUniqueName(sCombinedName));
-
-  return sCombinedName;
+    ref_sName = sBase;
+    ref_sName.AppendFormat(".{}", uiSuffix);
+    ++uiSuffix;
+  } while (!IsUniqueName(ref_sName));
 }
