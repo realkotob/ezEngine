@@ -456,14 +456,14 @@ void ezWorld::PostMessage(const ezComponentHandle& hReceiverComponent, const ezM
   }
 }
 
-void ezWorld::FindEventMsgHandlers(const ezMessage& msg, ezGameObject* pSearchObject, ezDynamicArray<ezComponent*>& out_components)
+void ezWorld::FindEventMsgHandlers(const ezMessage& msg, const ezComponent* pSenderComponent, ezGameObject* pSearchObject, ezDynamicArray<ezComponent*>& out_components)
 {
-  FindEventMsgHandlers(*this, msg, pSearchObject, out_components);
+  FindEventMsgHandlers(*this, msg, pSenderComponent, pSearchObject, out_components);
 }
 
-void ezWorld::FindEventMsgHandlers(const ezMessage& msg, const ezGameObject* pSearchObject, ezDynamicArray<const ezComponent*>& out_components) const
+void ezWorld::FindEventMsgHandlers(const ezMessage& msg, const ezComponent* pSenderComponent, const ezGameObject* pSearchObject, ezDynamicArray<const ezComponent*>& out_components) const
 {
-  FindEventMsgHandlers(*this, msg, pSearchObject, out_components);
+  FindEventMsgHandlers(*this, msg, pSenderComponent, pSearchObject, out_components);
 }
 
 void ezWorld::Update()
@@ -982,7 +982,7 @@ void ezWorld::ProcessQueuedMessages(ezObjectMsgQueueType::Enum queueType)
 
 // static
 template <typename World, typename GameObject, typename Component>
-void ezWorld::FindEventMsgHandlers(World& world, const ezMessage& msg, GameObject pSearchObject, ezDynamicArray<Component>& out_components)
+void ezWorld::FindEventMsgHandlers(World& world, const ezMessage& msg, const ezComponent* pSenderComponent, GameObject pSearchObject, ezDynamicArray<Component>& out_components)
 {
   using EventMessageHandlerComponentType = typename std::conditional<std::is_const<World>::value, const ezEventMessageHandlerComponent*, ezEventMessageHandlerComponent*>::type;
 
@@ -997,6 +997,9 @@ void ezWorld::FindEventMsgHandlers(World& world, const ezMessage& msg, GameObjec
       bool bContinueSearch = true;
       for (auto pComponent : pCurrentObject->GetComponents())
       {
+        if (pComponent == pSenderComponent)
+          continue;
+
         if constexpr (std::is_const<World>::value == false)
         {
           pComponent->EnsureInitialized();
@@ -1034,6 +1037,7 @@ void ezWorld::FindEventMsgHandlers(World& world, const ezMessage& msg, GameObjec
       }
 
       pCurrentObject = pCurrentObject->GetParent();
+      pSenderComponent = nullptr;
     }
   }
 
