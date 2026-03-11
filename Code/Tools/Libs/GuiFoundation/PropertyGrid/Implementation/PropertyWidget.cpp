@@ -1616,7 +1616,7 @@ void ezQtPropertyEditorEnumWidget::OnInit()
 
   const ezUInt32 uiCount = pType->GetProperties().GetCount();
 
-  ezHybridArray<const ezAbstractProperty*, 16> props;
+  ezTempHybridArray<const ezAbstractProperty*, 16> props;
 
   // Start at 1 to skip default value.
   for (ezUInt32 i = 1; i < uiCount; ++i)
@@ -1870,7 +1870,7 @@ void ezQtCurve1DButtonWidget::UpdatePreview(ezObjectAccessorBase* pObjectAccesso
   pObjectAccessor->GetCountByName(pCurveObject, "ControlPoints", iNumPoints).AssertSuccess();
 
   ezVariant v;
-  ezHybridArray<ezVec2d, 32> points;
+  ezTempHybridArray<ezVec2d, 32> points;
   points.Reserve(iNumPoints);
 
   double minX = static_cast<double>(ezColorGradient::TimeToTick(fLowerExtents));
@@ -1985,7 +1985,7 @@ ezQtPropertyEditorCurve1DWidget::ezQtPropertyEditorCurve1DWidget()
   EZ_VERIFY(connect(m_pButton, SIGNAL(clicked()), this, SLOT(on_Button_triggered())) != nullptr, "signal/slot connection failed");
 }
 
-void ezQtPropertyEditorCurve1DWidget::SetSelection(const ezHybridArray<ezPropertySelection, 8>& items)
+void ezQtPropertyEditorCurve1DWidget::SetSelection(const ezArrayPtr<ezPropertySelection>& items)
 {
   ezQtPropertyWidget::SetSelection(items);
 
@@ -2231,7 +2231,7 @@ ezQtPropertyEditorColorGradientWidget::ezQtPropertyEditorColorGradientWidget()
   EZ_VERIFY(connect(m_pButton, SIGNAL(clicked()), this, SLOT(on_Button_triggered())) != nullptr, "signal/slot connection failed");
 }
 
-void ezQtPropertyEditorColorGradientWidget::SetSelection(const ezHybridArray<ezPropertySelection, 8>& items)
+void ezQtPropertyEditorColorGradientWidget::SetSelection(const ezArrayPtr<ezPropertySelection>& items)
 {
   ezQtPropertyWidget::SetSelection(items);
   UpdatePreview();

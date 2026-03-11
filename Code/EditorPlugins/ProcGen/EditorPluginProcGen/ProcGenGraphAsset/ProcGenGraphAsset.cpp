@@ -343,9 +343,9 @@ ezTransformStatus ezProcGenGraphAssetDocument::InternalTransformAsset(ezStreamWr
   return WriteAsset(stream, pAssetProfile, false);
 }
 
-void ezProcGenGraphAssetDocument::GetSupportedMimeTypesForPasting(ezHybridArray<ezString, 4>& out_MimeTypes) const
+void ezProcGenGraphAssetDocument::GetSupportedMimeTypesForPasting(ezDynamicArray<ezString>& out_mimeTypes) const
 {
-  out_MimeTypes.PushBack("application/ezEditor.ProcGenGraph");
+  out_mimeTypes.PushBack("application/ezEditor.ProcGenGraph");
 }
 
 bool ezProcGenGraphAssetDocument::CopySelectedObjects(ezAbstractObjectGraph& out_objectGraph, ezStringBuilder& out_MimeType) const
@@ -414,7 +414,7 @@ ezExpressionAST::Node* ezProcGenGraphAssetDocument::GenerateExpressionAST(const 
 
   auto inputPins = pManager->GetInputPins(outputNode);
 
-  ezHybridArray<ezExpressionAST::Node*, 8> inputAstNodes;
+  ezTempHybridArray<ezExpressionAST::Node*, 8> inputAstNodes;
   inputAstNodes.SetCount(inputPins.GetCount());
 
   for (ezUInt32 i = 0; i < inputPins.GetCount(); ++i)
@@ -475,7 +475,7 @@ ezExpressionAST::Node* ezProcGenGraphAssetDocument::GenerateDebugExpressionAST(G
     EZ_ASSERT_DEBUG(pPinSource != nullptr, "Invalid connection");
   }
 
-  ezHybridArray<ezExpressionAST::Node*, 8> inputAstNodes;
+  ezTempHybridArray<ezExpressionAST::Node*, 8> inputAstNodes;
   inputAstNodes.SetCount(4); // placement output node has 4 inputs
 
   // Recursively generate all dependent code and pretend it is connected to the color index input of the debug placement output node.

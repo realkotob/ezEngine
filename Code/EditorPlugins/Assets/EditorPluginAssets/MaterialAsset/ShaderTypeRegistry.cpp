@@ -170,7 +170,7 @@ namespace
     return pType;
   }
 
-  void AddAttributes(ezShaderParser::ParameterDefinition& ref_def, const ezRTTI* pType, ezHybridArray<const ezPropertyAttribute*, 2>& ref_attributes)
+  void AddAttributes(ezShaderParser::ParameterDefinition& ref_def, const ezRTTI* pType, ezDynamicArray<const ezPropertyAttribute*>& ref_attributes)
   {
     if (ref_def.m_sType.StartsWith_NoCase("texture"))
     {
@@ -310,8 +310,8 @@ void ezShaderTypeRegistry::UpdateShaderType(ShaderData& data)
 {
   EZ_LOG_BLOCK("Updating Shader Parameters", data.m_sShaderPath.GetData());
 
-  ezHybridArray<ezShaderParser::ParameterDefinition, 16> parameters;
-  ezHybridArray<ezShaderParser::EnumDefinition, 4> enumDefinitions;
+  ezTempHybridArray<ezShaderParser::ParameterDefinition, 16> parameters;
+  ezTempHybridArray<ezShaderParser::EnumDefinition, 4> enumDefinitions;
 
   {
     ezFileStats Stats;

@@ -26,7 +26,7 @@ namespace ezMeshImportUtils
       return ezString();
     }
 
-    ezHybridArray<ezString, 16> allowedExtensions;
+    ezTempHybridArray<ezString, 16> allowedExtensions;
     FillFileFilter(allowedExtensions, ezFileBrowserAttribute::ImagesLdrAndHdr);
 
     ezStringBuilder sFinalTextureName;
@@ -151,7 +151,7 @@ namespace ezMeshImportUtils
     }
   };
 
-  void SetMeshAssetMaterialSlots(ezHybridArray<ezMaterialResourceSlot, 8>& inout_materialSlots, const ezModelImporter2::Importer* pImporter)
+  void SetMeshAssetMaterialSlots(ezDynamicArray<ezMaterialResourceSlot>& inout_materialSlots, const ezModelImporter2::Importer* pImporter)
   {
     const auto& opt = pImporter->GetImportOptions();
 
@@ -168,7 +168,7 @@ namespace ezMeshImportUtils
     }
   }
 
-  void CopyMeshAssetMaterialSlotToResource(ezMeshResourceDescriptor& ref_desc, const ezHybridArray<ezMaterialResourceSlot, 8>& materialSlots)
+  void CopyMeshAssetMaterialSlotToResource(ezMeshResourceDescriptor& ref_desc, const ezArrayPtr<ezMaterialResourceSlot>& materialSlots)
   {
     for (ezUInt32 i = 0; i < materialSlots.GetCount(); ++i)
     {
@@ -381,7 +381,7 @@ namespace ezMeshImportUtils
     return false;
   }
 
-  void ImportMeshAssetMaterials(ezHybridArray<ezMaterialResourceSlot, 8>& inout_materialSlots, ezStringView sDocumentDirectory, const ezModelImporter2::Importer* pImporter)
+  void ImportMeshAssetMaterials(ezDynamicArray<ezMaterialResourceSlot>& inout_materialSlots, ezStringView sDocumentDirectory, const ezModelImporter2::Importer* pImporter)
   {
     EZ_PROFILE_SCOPE("ImportMeshAssetMaterials");
 
@@ -407,7 +407,7 @@ namespace ezMeshImportUtils
 
     ezHashTable<const ezModelImporter2::OutputMaterial*, ezString> importMatToGuid;
 
-    ezHybridArray<ezDocument*, 32> pendingSaveTasks;
+    ezTempHybridArray<ezDocument*, 32> pendingSaveTasks;
 
     auto WaitForPendingTasks = [&pendingSaveTasks]()
     {
@@ -419,7 +419,7 @@ namespace ezMeshImportUtils
       pendingSaveTasks.Clear();
     };
 
-    ezHybridArray<ezString, 16> allowedExtensions;
+    ezTempHybridArray<ezString, 16> allowedExtensions;
     FillFileFilter(allowedExtensions, ezFileBrowserAttribute::ImagesLdrAndHdr);
 
     for (const auto& itTex : pImporter->m_OutputTextures)

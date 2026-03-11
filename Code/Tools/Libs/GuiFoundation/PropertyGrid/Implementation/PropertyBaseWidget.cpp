@@ -68,7 +68,7 @@ void ezQtPropertyWidget::Init(ezQtPropertyGridWidget* pGrid, ezObjectAccessorBas
   OnInit();
 }
 
-void ezQtPropertyWidget::SetSelection(const ezHybridArray<ezPropertySelection, 8>& items)
+void ezQtPropertyWidget::SetSelection(const ezArrayPtr<ezPropertySelection>& items)
 {
   m_Items = items;
 }
@@ -116,7 +116,7 @@ void ezQtPropertyWidget::ExtendContextMenu(QMenu& m)
             else
             {
               // Revert objects pointed to by the object type element
-              ezHybridArray<ezPropertySelection, 8> ResolvedObjects;
+              ezTempHybridArray<ezPropertySelection, 8> ResolvedObjects;
               for (const auto& item : m_Items)
               {
                 ezUuid ObjectGuid = m_pObjectAccessor->Get<ezUuid>(item.m_pObject, m_pProp, item.m_Index);
@@ -310,7 +310,7 @@ void ezQtPropertyWidget::ExtendContextMenu(QMenu& m)
   }
 }
 
-const ezRTTI* ezQtPropertyWidget::GetCommonBaseType(const ezHybridArray<ezPropertySelection, 8>& items)
+const ezRTTI* ezQtPropertyWidget::GetCommonBaseType(const ezArrayPtr<ezPropertySelection>& items)
 {
   const ezRTTI* pSubtype = nullptr;
 
@@ -346,8 +346,7 @@ QColor ezQtPropertyWidget::SetPaletteBackgroundColor(ezColorGammaUB inputColor, 
   return qColor;
 }
 
-bool ezQtPropertyWidget::GetCommonVariantSubType(
-  const ezHybridArray<ezPropertySelection, 8>& items, const ezAbstractProperty* pProperty, ezVariantType::Enum& out_type)
+bool ezQtPropertyWidget::GetCommonVariantSubType(const ezArrayPtr<ezPropertySelection>& items, const ezAbstractProperty* pProperty, ezVariantType::Enum& out_type)
 {
   bool bFirst = true;
   // check if we have multiple values
@@ -374,7 +373,7 @@ bool ezQtPropertyWidget::GetCommonVariantSubType(
   return true;
 }
 
-ezVariant ezQtPropertyWidget::GetCommonValue(const ezHybridArray<ezPropertySelection, 8>& items, const ezAbstractProperty* pProperty)
+ezVariant ezQtPropertyWidget::GetCommonValue(const ezArrayPtr<ezPropertySelection>& items, const ezAbstractProperty* pProperty)
 {
   if (!items[0].m_Index.IsValid() && (m_pProp->GetCategory() == ezPropertyCategory::Array || m_pProp->GetCategory() == ezPropertyCategory::Set))
   {
@@ -568,7 +567,7 @@ ezQtStandardPropertyWidget::ezQtStandardPropertyWidget()
 {
 }
 
-void ezQtStandardPropertyWidget::SetSelection(const ezHybridArray<ezPropertySelection, 8>& items)
+void ezQtStandardPropertyWidget::SetSelection(const ezArrayPtr<ezPropertySelection>& items)
 {
   ezQtPropertyWidget::SetSelection(items);
 
@@ -641,7 +640,7 @@ void ezQtPropertyPointerWidget::OnInit()
     ezMakeDelegate(&ezQtPropertyPointerWidget::StructureEventHandler, this));
 }
 
-void ezQtPropertyPointerWidget::SetSelection(const ezHybridArray<ezPropertySelection, 8>& items)
+void ezQtPropertyPointerWidget::SetSelection(const ezArrayPtr<ezPropertySelection>& items)
 {
   ezQtScopedUpdatesDisabled _(this);
 
@@ -655,8 +654,8 @@ void ezQtPropertyPointerWidget::SetSelection(const ezHybridArray<ezPropertySelec
   }
 
 
-  ezHybridArray<ezPropertySelection, 8> emptyItems;
-  ezHybridArray<ezPropertySelection, 8> subItems;
+  ezTempHybridArray<ezPropertySelection, 8> emptyItems;
+  ezTempHybridArray<ezPropertySelection, 8> subItems;
   for (const auto& item : m_Items)
   {
     ezUuid ObjectGuid = m_pObjectAccessor->Get<ezUuid>(item.m_pObject, m_pProp, item.m_Index);
@@ -723,7 +722,7 @@ void ezQtPropertyPointerWidget::OnDeleteButtonClicked()
   m_pObjectAccessor->StartTransaction("Delete Object");
 
   ezStatus res(EZ_SUCCESS);
-  const ezHybridArray<ezPropertySelection, 8> selection = m_pTypeWidget->GetSelection();
+  const ezTempHybridArray<ezPropertySelection, 8> selection = m_pTypeWidget->GetSelection();
   for (auto& item : selection)
   {
     res = m_pObjectAccessor->RemoveObject(item.m_pObject);
@@ -781,7 +780,7 @@ ezQtEmbeddedClassPropertyWidget::~ezQtEmbeddedClassPropertyWidget()
   m_pGrid->GetCommandHistory()->m_Events.RemoveEventHandler(ezMakeDelegate(&ezQtEmbeddedClassPropertyWidget::CommandHistoryEventHandler, this));
 }
 
-void ezQtEmbeddedClassPropertyWidget::SetSelection(const ezHybridArray<ezPropertySelection, 8>& items)
+void ezQtEmbeddedClassPropertyWidget::SetSelection(const ezArrayPtr<ezPropertySelection>& items)
 {
   ezQtScopedUpdatesDisabled _(this);
 
@@ -917,7 +916,7 @@ void ezQtPropertyTypeWidget::OnInit()
   }
 }
 
-void ezQtPropertyTypeWidget::SetSelection(const ezHybridArray<ezPropertySelection, 8>& items)
+void ezQtPropertyTypeWidget::SetSelection(const ezArrayPtr<ezPropertySelection>& items)
 {
   ezQtScopedUpdatesDisabled _(this);
 
@@ -934,7 +933,7 @@ void ezQtPropertyTypeWidget::SetSelection(const ezHybridArray<ezPropertySelectio
 
   // Retrieve the objects the property points to. This could be an embedded class or
   // an element of an array, be it pointer or embedded class.
-  ezHybridArray<ezPropertySelection, 8> ResolvedObjects;
+  ezTempHybridArray<ezPropertySelection, 8> ResolvedObjects;
   for (const auto& item : m_Items)
   {
     ezUuid ObjectGuid = m_pObjectAccessor->Get<ezUuid>(item.m_pObject, m_pProp, item.m_Index);
@@ -1007,7 +1006,7 @@ ezQtPropertyContainerWidget::~ezQtPropertyContainerWidget()
   Clear();
 }
 
-void ezQtPropertyContainerWidget::SetSelection(const ezHybridArray<ezPropertySelection, 8>& items)
+void ezQtPropertyContainerWidget::SetSelection(const ezArrayPtr<ezPropertySelection>& items)
 {
   ezQtPropertyWidget::SetSelection(items);
 
@@ -1060,7 +1059,7 @@ void ezQtPropertyContainerWidget::dropEvent(QDropEvent* event)
     if (pDragElement)
     {
       const ezAbstractProperty* pProp = pDragElement->m_pWidget->GetProperty();
-      ezHybridArray<ezPropertySelection, 8> items = pDragElement->m_pWidget->GetSelection();
+      ezTempHybridArray<ezPropertySelection, 8> items = pDragElement->m_pWidget->GetSelection();
       if (m_iDropSource != m_iDropTarget && (m_iDropSource + 1) != m_iDropTarget)
       {
         MoveItems(items, m_iDropTarget - m_iDropSource);
@@ -1155,7 +1154,7 @@ void ezQtPropertyContainerWidget::OnElementButtonClicked()
 {
   ezQtElementGroupButton* pButton = qobject_cast<ezQtElementGroupButton*>(sender());
   const ezAbstractProperty* pProp = pButton->GetGroupWidget()->GetProperty();
-  ezHybridArray<ezPropertySelection, 8> items = pButton->GetGroupWidget()->GetSelection();
+  ezTempHybridArray<ezPropertySelection, 8> items = pButton->GetGroupWidget()->GetSelection();
 
   switch (pButton->GetAction())
   {
@@ -1331,7 +1330,7 @@ void ezQtPropertyContainerWidget::GetRequiredElements(ezDynamicArray<ezVariant>&
   if (GetContainerCategory() == ezPropertyCategory::Map)
   {
     EZ_VERIFY(m_pObjectAccessor->GetKeys(m_Items[0].m_pObject, m_pProp, out_keys).Succeeded(), "GetKeys should always succeed.");
-    ezHybridArray<ezVariant, 16> keys;
+    ezTempHybridArray<ezVariant, 16> keys;
     for (ezUInt32 i = 1; i < m_Items.GetCount(); i++)
     {
       keys.Clear();
@@ -1586,7 +1585,7 @@ void ezQtPropertyStandardTypeContainerWidget::UpdateElement(ezUInt32 index)
 {
   Element& elem = m_Elements[index];
 
-  ezHybridArray<ezPropertySelection, 8> SubItems;
+  ezTempHybridArray<ezPropertySelection, 8> SubItems;
 
   for (const auto& item : m_Items)
   {
@@ -1630,7 +1629,7 @@ void ezQtPropertyTypeContainerWidget::OnInit()
 void ezQtPropertyTypeContainerWidget::UpdateElement(ezUInt32 index)
 {
   Element& elem = m_Elements[index];
-  ezHybridArray<ezPropertySelection, 8> SubItems;
+  ezTempHybridArray<ezPropertySelection, 8> SubItems;
 
   // To be in line with all other ezQtPropertyWidget the container element will
   // be given a selection in the form of this is the parent object, this is the property and in this
@@ -1647,7 +1646,7 @@ void ezQtPropertyTypeContainerWidget::UpdateElement(ezUInt32 index)
   {
     // To get the correct name we actually need to resolve the selection to the actual objects
     // they are pointing to.
-    ezHybridArray<ezPropertySelection, 8> ResolvedObjects;
+    ezTempHybridArray<ezPropertySelection, 8> ResolvedObjects;
     for (const auto& item : SubItems)
     {
       ezUuid ObjectGuid = m_pObjectAccessor->Get<ezUuid>(item.m_pObject, m_pProp, item.m_Index);
@@ -2019,7 +2018,7 @@ void ezQtVariantContainerWidget::OnInit()
   ezQtPropertyContainerWidget::OnInit();
 }
 
-void ezQtVariantContainerWidget::SetSelection(const ezHybridArray<ezPropertySelection, 8>& items)
+void ezQtVariantContainerWidget::SetSelection(const ezArrayPtr<ezPropertySelection>& items)
 {
   ezMap<const ezDocumentObject*, ezVariant> subItems;
   for (auto it : items)
