@@ -1,5 +1,6 @@
 #include <EditorPluginScene/EditorPluginScenePCH.h>
 
+#include <Core/Prefabs/PrefabReferenceComponent.h>
 #include <EditorFramework/Assets/AssetCurator.h>
 #include <EditorFramework/Assets/SimpleAssetDocument.h>
 #include <EditorPluginScene/Scene/LayerDocument.h>
