@@ -565,6 +565,20 @@ void ezSceneDocument::DuplicateSelection()
   cmd.m_sGraphTextFormat = (const char*)streamStorage.GetData();
   cmd.m_sParentNodes = temp;
 
+  // When exactly one object is selected, place the duplicate right after the original in the parent's children list.
+  if (parents.GetCount() == 1)
+  {
+    ezTempHybridArray<ezSelectionEntry, 4> topLevelSel;
+    GetSelectionManager()->GetTopLevelSelection(topLevelSel);
+
+    if (topLevelSel.GetCount() == 1)
+    {
+      const ezVariant idx = topLevelSel[0].m_pObject->GetPropertyIndex();
+      if (idx.IsValid())
+        cmd.m_iInsertIndex = idx.ConvertTo<ezInt32>() + 1;
+    }
+  }
+
   auto history = GetCommandHistory();
 
   history->StartTransaction("Duplicate Selection");

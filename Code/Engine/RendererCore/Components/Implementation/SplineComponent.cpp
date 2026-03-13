@@ -222,7 +222,14 @@ ezVec3 ezSplineComponent::GetPositionAtKey(float fKey, ezEnum<ezSplineComponentS
 
 ezVec3 ezSplineComponent::GetForwardDirAtKey(float fKey, ezEnum<ezSplineComponentSpace> space /* = ezSplineComponentSpace::Default*/) const
 {
-  ezVec3 dir = ezSimdConversion::ToVec3(m_Spline.EvaluateDerivative(fKey).GetNormalized<3>());
+  auto dir0 = m_Spline.EvaluateDerivative(fKey);
+  ezVec3 dir = ezSimdConversion::ToVec3(dir0);
+
+  if (dir.IsZero(0.0001f))
+  {
+    dir = ezVec3::MakeAxisX();
+  }
+
 
   if (space == ezSplineComponentSpace::Global)
   {
