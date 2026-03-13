@@ -64,6 +64,23 @@ ezSceneDocumentManager::ezSceneDocumentManager()
   }
 }
 
+ezResult ezSceneDocumentManager::OpenPickedDocument(const ezDocumentObject* pPickedComponent, ezUInt32 uiPartIndex)
+{
+  if (!pPickedComponent->GetTypeAccessor().GetType()->IsDerivedFrom<ezPrefabReferenceComponent>())
+    return EZ_FAILURE;
+
+  // access the prefab asset
+  const ezVariant varPrefabGuid = pPickedComponent->GetTypeAccessor().GetValue("Prefab");
+
+  if (varPrefabGuid.IsA<ezString>())
+  {
+    if (TryOpenAssetDocument(varPrefabGuid.Get<ezString>()).Succeeded())
+      return EZ_SUCCESS;
+  }
+
+  return EZ_FAILURE;
+}
+
 void ezSceneDocumentManager::InternalCreateDocument(ezStringView sDocumentTypeName, ezStringView sPath, bool bCreateNewDocument, ezDocument*& out_pDocument, const ezDocumentObject* pOpenContext)
 {
   if (sDocumentTypeName.IsEqual("Scene"))
