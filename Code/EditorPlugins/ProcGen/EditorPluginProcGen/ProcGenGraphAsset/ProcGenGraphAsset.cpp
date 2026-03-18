@@ -488,7 +488,7 @@ void ezProcGenGraphAssetDocument::DumpSelectedOutput(bool bAst, bool bDisassembl
 {
   const ezDocumentObject* pSelectedNode = nullptr;
 
-  auto selection = GetSelectionManager()->GetSelection();
+  const auto& selection = GetSelectionManager()->GetSelection();
   if (!selection.IsEmpty())
   {
     pSelectedNode = selection[0];
