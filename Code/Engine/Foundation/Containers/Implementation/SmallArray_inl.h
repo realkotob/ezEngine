@@ -413,7 +413,7 @@ void ezSmallArrayBase<T, Size>::PopBack(ezUInt32 uiCountToRemove /* = 1 */)
 {
   EZ_ASSERT_DEBUG(m_uiCount >= uiCountToRemove, "Out of bounds access. Array has {0} elements, trying to pop {1} elements.", m_uiCount, uiCountToRemove);
 
-  m_uiCount -= uiCountToRemove;
+  m_uiCount -= static_cast<ezUInt16>(uiCountToRemove);
   ezMemoryUtils::Destruct(GetElementsPtr() + m_uiCount, uiCountToRemove);
 }
 
