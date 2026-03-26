@@ -5,7 +5,7 @@
 ### Build Commands
 
 ```shell
-# Generate and build Debug configuration
+# Generate and build Debug configuration (use by default)
 powershell -NoProfile -ExecutionPolicy ByPass ./RunCMake.ps1 -Target vs2022x64 -SolutionName "ClaudeBuild" -WorkspaceDir "claude-build"
 cmake --build Workspace/claude-build --config Debug
 
@@ -47,9 +47,11 @@ To find more arguments for the test framework, run `FoundationTest.exe -help -cl
 
 - **Workspace Cleanup**: To clean up, simply delete the `Workspace/claude-build/` directory and regenerate
 
-- **When adding a file**: CMake has to be run again, to make the file part of the build.
+- **When adding, removing or renaming a file**: CMake has to be run again to update the solution.
 
 - For a basic compilation test, build the **Foundation** library.
+
+- At startup, check which tool permissions you have. Prefer to use tools that can be executed without permission requests.
 
 ## Code Documentation
 
