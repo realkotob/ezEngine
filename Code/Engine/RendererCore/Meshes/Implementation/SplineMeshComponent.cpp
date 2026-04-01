@@ -502,10 +502,17 @@ ezResult ezSplineMeshComponent::GenerateSplineMeshDesc(const ezSpline& spline, c
       {
         if (vertexStreamConfig.HasNormalTangentAndTexCoord0())
         {
-          const ezVec3 normal = transform.TransformDirection(meshBufferDesc.GetNormal(v));
+          ezMat3 normalTransform = transform.GetAsMat4().GetRotationalPart();
+          normalTransform.Invert(0.0f).IgnoreResult();
+          normalTransform.Transpose();
+
+          ezVec3 normal = normalTransform.TransformDirection(meshBufferDesc.GetNormal(v));
+          normal.NormalizeIfNotZero(ezVec3::MakeAxisZ()).IgnoreResult();
 
           ezVec4 tangent = meshBufferDesc.GetTangent(v);
-          tangent = transform.TransformDirection(tangent.GetAsVec3()).GetAsVec4(tangent.w);
+          ezVec3 tangentDir = normalTransform.TransformDirection(tangent.GetAsVec3());
+          tangentDir.NormalizeIfNotZero(ezVec3::MakeAxisX()).IgnoreResult();
+          tangent = tangentDir.GetAsVec4(tangent.w);
 
           splineMeshBufferDesc.SetNormal(uiTargetVertex, normal);
           splineMeshBufferDesc.SetTangent(uiTargetVertex, tangent);
