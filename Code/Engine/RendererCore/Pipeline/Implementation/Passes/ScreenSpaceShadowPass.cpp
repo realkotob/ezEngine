@@ -9,7 +9,11 @@
 #include <RendererFoundation/Resources/Texture.h>
 
 #include <Shaders/Pipeline/ScreenSpaceShadowConstants.h>
+
+EZ_WARNING_PUSH()
+EZ_WARNING_DISABLE_MSVC(4244)
 #include <Shaders/Pipeline/bend_sss/bend_sss_cpu.h>
+EZ_WARNING_POP()
 
 // clang-format off
 EZ_BEGIN_DYNAMIC_REFLECTED_TYPE(ezScreenSpaceShadowPass, 1, ezRTTIDefaultAllocator<ezScreenSpaceShadowPass>)
