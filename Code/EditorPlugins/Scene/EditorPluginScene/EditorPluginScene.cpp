@@ -18,6 +18,7 @@
 #include <EditorPluginScene/Scene/SceneDocumentManager.h>
 #include <EditorPluginScene/Scene/SceneDocumentWindow.moc.h>
 #include <EditorPluginScene/Visualizers/BoxReflectionProbeVisualizerAdapter.h>
+#include <EditorPluginScene/Visualizers/DirectionalLightVisualizerAdapter.h>
 #include <EditorPluginScene/Visualizers/PointLightVisualizerAdapter.h>
 #include <EditorPluginScene/Visualizers/SpotLightVisualizerAdapter.h>
 #include <GameEngine/Configuration/RendererProfileConfigs.h>
@@ -33,6 +34,7 @@
 #include <GuiFoundation/UIServices/DynamicStringEnum.h>
 #include <RendererCore/Components/SplineComponent.h>
 #include <RendererCore/Lights/BoxReflectionProbeComponent.h>
+#include <RendererCore/Lights/DirectionalLightComponent.h>
 #include <RendererCore/Lights/PointLightComponent.h>
 #include <RendererCore/Lights/SpotLightComponent.h>
 #include <RendererCore/Utils/CoreRenderProfile.h>
@@ -211,6 +213,8 @@ void OnLoadPlugin()
   // Visualizers
   ezVisualizerAdapterRegistry::GetSingleton()->m_Factory.RegisterCreator(ezGetStaticRTTI<ezPointLightVisualizerAttribute>(), [](const ezRTTI* pRtti) -> ezVisualizerAdapter*
     { return EZ_DEFAULT_NEW(ezPointLightVisualizerAdapter); });
+  ezVisualizerAdapterRegistry::GetSingleton()->m_Factory.RegisterCreator(ezGetStaticRTTI<ezDirectionalLightVisualizerAttribute>(), [](const ezRTTI* pRtti) -> ezVisualizerAdapter*
+    { return EZ_DEFAULT_NEW(ezDirectionalLightVisualizerAdapter); });
   ezVisualizerAdapterRegistry::GetSingleton()->m_Factory.RegisterCreator(ezGetStaticRTTI<ezSpotLightVisualizerAttribute>(), [](const ezRTTI* pRtti) -> ezVisualizerAdapter*
     { return EZ_DEFAULT_NEW(ezSpotLightVisualizerAdapter); });
   ezVisualizerAdapterRegistry::GetSingleton()->m_Factory.RegisterCreator(ezGetStaticRTTI<ezBoxReflectionProbeVisualizerAttribute>(), [](const ezRTTI* pRtti) -> ezVisualizerAdapter*

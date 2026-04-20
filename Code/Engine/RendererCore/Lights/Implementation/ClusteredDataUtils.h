@@ -167,7 +167,7 @@ namespace
 
     out_perLightData.colorAndType = *reinterpret_cast<ezUInt32*>(&lightColor.r);
     out_perLightData.intensity = pLightRenderData->m_fIntensity;
-    out_perLightData.specularMultiplier = pLightRenderData->m_fSpecularMultiplier;
+    out_perLightData.specularMultiplierAndRadius = ezShaderUtils::Float2ToRG16F(ezVec2(pLightRenderData->m_fSpecularMultiplier, pLightRenderData->m_fRadius));
     out_perLightData.shadowDataOffsetAndFadeOut = pLightRenderData->m_uiShadowDataOffsetAndFadeOut;
   }
 
@@ -177,6 +177,18 @@ namespace
 
     out_perLightData.position = pPointLightRenderData->m_vGlobalPosition;
     out_perLightData.invSqrAttRadius = 1.0f / (pPointLightRenderData->m_fRange * pPointLightRenderData->m_fRange);
+
+    // Tube axis direction (X axis of rotation)
+    const ezVec3 axisDir = pPointLightRenderData->m_qGlobalRotation * ezVec3(1.0f, 0.0f, 0.0f);
+    out_perLightData.direction = ezShaderUtils::Float3ToRGB10(axisDir);
+
+    // Pack length and half length as fp16
+    out_perLightData.auxParams = ezShaderUtils::Float2ToRG16F(ezVec2(pPointLightRenderData->m_fLength, pPointLightRenderData->m_fLength * 0.5f));
+
+    // Pack a perpendicular direction (Y axis) for orientation recovery on GPU
+    const ezVec3 rightDir = pPointLightRenderData->m_qGlobalRotation * ezVec3(0.0f, 1.0f, 0.0f);
+    out_perLightData.cookieParams0 = ezFloat16(rightDir.z).GetRawData() << 16;
+    out_perLightData.cookieParams1 = ezShaderUtils::Float2ToRG16F(rightDir.GetAsVec2());
   }
 
   void FillSpotLightData(ezPerLightData& out_perLightData, const ezSpotLightRenderData* pSpotLightRenderData)
@@ -236,7 +248,7 @@ namespace
     }
 
     out_perLightData.colorAndType = *reinterpret_cast<ezUInt32*>(&lightColor.r);
-    out_perLightData.specularMultiplier = 0.0f; // no specular for fill lights
+    out_perLightData.specularMultiplierAndRadius = 0; // no specular for fill lights
 
     out_perLightData.position = pFillLightRenderData->m_vGlobalPosition;
     out_perLightData.invSqrAttRadius = 1.0f / pFillLightRenderData->m_fRange;

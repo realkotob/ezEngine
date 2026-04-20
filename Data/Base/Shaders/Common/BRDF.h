@@ -107,11 +107,13 @@ float3 FresnelSchlick(float3 specularColor, float VdotH)
 }
 
 // note that 1/PI is applied later
-AccumulatedLight DefaultShading(ezMaterialData matData, float3 L, float3 V)
+AccumulatedLight DefaultShading(ezMaterialData matData, float3 lightDiffuseVector, float3 lightSpecVector, float3 V, float roughness)
 {
   float3 N = matData.worldNormal;
-  float3 H = normalize(V + L);
-  float NdotL = saturate(dot(N, L));
+  float3 H = normalize(V + lightSpecVector);
+  float NdotLSpec = saturate(dot(N, lightSpecVector));
+
+  float NdotL = saturate(dot(N, lightDiffuseVector));
   float NdotV = max(dot(N, V), 1e-5f);
   float NdotH = saturate(dot(N, H));
   float VdotH = saturate(dot(V, H));
@@ -122,13 +124,13 @@ AccumulatedLight DefaultShading(ezMaterialData matData, float3 L, float3 V)
   //  ------------- = D * Vis * F with Vis = -------------
   //  4 * N.L * N.V                          4 * N.L * N.V
 
-  float D = SpecularGGX(matData.roughness, NdotH);
-  float Vis = VisibilitySmithJointApprox(matData.roughness, NdotV, NdotL);
+  float D = SpecularGGX(roughness, NdotH);
+  float Vis = VisibilitySmithJointApprox(roughness, NdotV, NdotLSpec);
   float3 F = FresnelSchlick(matData.specularColor, VdotH);
 
   float3 diffuse = DiffuseLambert(matData.diffuseColor);
 
-  return InitializeLight(diffuse * NdotL, F * (D * Vis * NdotL));
+  return InitializeLight(diffuse * NdotL, F * (D * Vis * NdotLSpec));
 }
 
 AccumulatedLight SubsurfaceShading(ezMaterialData matData, float3 L, float3 V)

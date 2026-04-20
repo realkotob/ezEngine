@@ -279,7 +279,7 @@ void ezClusteredDataExtractor::PostSortAndBatch(const ezView& view, const ezDyna
         {
           FillPointLightData(m_TempLightData.ExpandAndGetRef(), pPointLightRenderData);
 
-          ezSimdBSphere pointLightSphere = ezSimdBSphere(ezSimdConversion::ToVec3(pPointLightRenderData->m_vGlobalPosition), pPointLightRenderData->m_fRange);
+          ezSimdBSphere pointLightSphere = ezSimdBSphere(ezSimdConversion::ToVec3(pPointLightRenderData->m_vGlobalPosition), pPointLightRenderData->m_fRange + pPointLightRenderData->m_fLength * 0.5f);
           RasterizeSphere(pointLightSphere, uiLightIndex, viewMatrix, projectionMatrix, m_TempLightsClusters.GetData(), m_ClusterBoundingSpheres.GetData());
 
           // For stereo, also rasterize against right eye clusters (union of both eyes)
