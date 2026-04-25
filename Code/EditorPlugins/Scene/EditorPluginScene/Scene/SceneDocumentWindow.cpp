@@ -96,6 +96,12 @@ ezQtSceneDocumentWindow::ezQtSceneDocumentWindow(ezSceneDocument* pDocument)
     m_pDockManager->addDockWidgetTab(ads::LeftDockWidgetArea, pPanelTree);
   }
 
+  // If prefab: expand scenegraph and select the root object, as that is the most likely one to be edited.
+  if (pDocument->IsPrefab()) {
+    pDocument->TriggerExpandScenegraph();
+    pDocument->GetSelectionManager()->SetSelection(pDocument->GetObjectManager()->GetRootObject()->GetChildren()[0]);
+  }
+
   FinishWindowCreation();
 }
 
