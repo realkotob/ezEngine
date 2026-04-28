@@ -90,6 +90,12 @@ void ezQtEditorApp::SlotAutoSave()
   {
     for (auto pDoc : pMan->ezDocumentManager::GetAllOpenDocuments())
     {
+      // Skip documents with an active transaction or undo/redo in progress (e.g. user is dragging something).
+      // The auto-save timer will retry on the next tick.
+      const ezCommandHistory* pHistory = pDoc->GetCommandHistory();
+      if (pHistory && (pHistory->IsInTransaction() || pHistory->IsInUndoRedo()))
+        continue;
+
       const ezTime tModified = pDoc->GetModifiedTime();
       if (tModified.IsPositive() && (tNow - tModified) >= tAutoSaveThreshold && tModified < tOldestTime)
       {
