@@ -59,8 +59,10 @@ VS_OUT main(VS_IN Input)
 
 	#if GIZMO_CONSTANT_SIZE == 1
 		#if CAMERA_MODE == CAMERA_MODE_ORTHO
-			// TODO: not sure how to compensate for constant size
-			float scale = 1.0f;
+			// Ortho proj _m11 = 2 / visibleWorldHeight. Scaling by the visible world height
+			// keeps the gizmo at constant pixel size regardless of ortho zoom.
+			float orthoWorldHeight = 2.0f / GetCameraToScreenMatrix()._m11;
+			float scale = orthoWorldHeight * GizmoScale;
 		#else
 			float scale = length(centerPosition - GetCameraPosition()) * GizmoScale;
 
