@@ -57,9 +57,7 @@ class ezMaterialAssetProperties : public ezReflectedClass
   EZ_ADD_DYNAMIC_REFLECTION(ezMaterialAssetProperties, ezReflectedClass);
 
 public:
-  ezMaterialAssetProperties()
-
-    = default;
+  ezMaterialAssetProperties() = default;
 
   void SetBaseMaterial(const char* szBaseMaterial);
   const char* GetBaseMaterial() const;
