@@ -13,12 +13,12 @@
 
 float CalcCloseToGeometryFadeOut(float4 position)
 {
-  return DepthFade(position.xyw, 0.1);
+  return DepthFade(position.xyw, GeometryProximityFadeOut);
 }
 
 float CalcCloseToCameraFadeOut(float4 position)
 {
-  return saturate(position.w / 0.5);
+  return saturate(position.w / CameraProximityFadeOut);
 }
 
 float CalcProximityFadeOut(float4 position)
