@@ -1,3 +1,5 @@
+#include <EditorFramework/Assets/AssetDocument.h>
+
 #include <EditorFramework/EditorFrameworkPCH.h>
 
 #include <EditorFramework/Assets/AssetCurator.h>
@@ -175,7 +177,7 @@ void ezQtAssetCuratorPanel::UpdateIssueInfo()
 
   ezAssetInfo* pAssetInfo = pSubAsset->m_pAssetInfo;
 
-  auto getNiceName = [](const ezString& sDep) -> ezStringBuilder
+  auto getNiceName = [&pSubAsset](const ezString& sDep) -> ezStringBuilder
   {
     if (ezConversionUtils::IsStringUuid(sDep))
     {
@@ -189,8 +191,43 @@ void ezQtAssetCuratorPanel::UpdateIssueInfo()
       ezUInt64 uiLow;
       ezUInt64 uiHigh;
       guid.GetValues(uiLow, uiHigh);
+
+      ezString sDocumentPath = pSubAsset->m_pAssetInfo->m_Path.GetAbsolutePath();
+
+      // Open the document (without requesting a window)
+      ezDocument* pDocument = ezQtEditorApp::GetSingleton()->OpenDocument(sDocumentPath, ezDocumentFlags::None);
+
+      constexpr ezUInt32 maxResults = 3;
+      ezTempHybridArray<ezString, maxResults> uses;
+      if (pDocument != nullptr)
+      {
+        // cast a document to ezAssetDocument to access the FindAssetUsages function.
+        if (ezAssetDocument* pAssetDoc = ezDynamicCast<ezAssetDocument*>(pDocument))
+        {
+          // Find all direct uses of this asset
+          pAssetDoc->FindAssetUsages(sDep, uses, maxResults);
+        }
+      }
+
       ezStringBuilder sTmp;
-      sTmp.SetFormat("{} - u4{{},{}}", sDep, uiLow, uiHigh);
+      if (uses.IsEmpty())
+      {
+        sTmp.SetFormat("{} - u4{{},{}}", sDep, uiLow, uiHigh);
+      }
+      else
+      {
+        ezStringBuilder usesString;
+        for (auto& use : uses)
+        {
+          if (!usesString.IsEmpty())
+          {
+            usesString.Append(", ");
+          }
+          usesString.Append(use);
+        }
+
+        sTmp.SetFormat("{}. Used by objects: {}", sDep, usesString);
+      }
 
       return sTmp;
     }

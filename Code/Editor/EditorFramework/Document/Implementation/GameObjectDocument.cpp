@@ -1048,3 +1048,136 @@ void ezGameObjectDocument::HandleEngineMessage(const ezEditorEngineDocumentMsg* 
     ScheduleSendObjectSelection();
   }
 }
+
+// the following method is similar to "ezAssetCurator::ReplaceAssetReferenceInObject"
+
+void ezGameObjectDocument::FindAssetUsages(ezStringView sAssetToFind, ezDynamicArray<ezString>& out_usages, ezUInt32 maxResults) const
+{
+  out_usages.Clear();
+  FindAssetUsagesInternal(sAssetToFind, GetObjectManager()->GetRootObject(), out_usages, maxResults);
+}
+
+void ezGameObjectDocument::FindAssetUsagesInternal(ezStringView sAssetToFind, const ezDocumentObject* pObject, ezDynamicArray<ezString>& out_usages, ezUInt32 maxResults) const
+{
+  auto pAccessor = GetObjectAccessor();
+
+  const ezRTTI* pType = pObject->GetTypeAccessor().GetType();
+  ezTempHybridArray<const ezAbstractProperty*, 32> properties;
+  pType->GetAllProperties(properties);
+
+  for (const ezAbstractProperty* pProp : properties)
+  {
+    // Check if this is an asset reference property
+    const ezAssetBrowserAttribute* pAssetAttr = pProp->GetAttributeByType<ezAssetBrowserAttribute>();
+    if (pAssetAttr == nullptr)
+      continue;
+
+    // Must be string type
+    const auto propVarType = pProp->GetSpecificType()->GetVariantType();
+    if (propVarType != ezVariantType::String && propVarType != ezVariantType::StringView)
+      continue;
+
+    // Skip temporary properties
+    if (pProp->GetAttributeByType<ezTemporaryAttribute>() != nullptr)
+      continue;
+
+    switch (pProp->GetCategory())
+    {
+      case ezPropertyCategory::Member:
+      {
+        if (pProp->GetFlags().IsSet(ezPropertyFlags::StandardType))
+        {
+          ezVariant value;
+          if (pAccessor->GetValue(pObject, pProp, value).Succeeded())
+          {
+            const ezString& sValue = value.Get<ezString>();
+            if (sValue == sAssetToFind)
+            {
+              ezStringBuilder sFullPath;
+              GenerateFullDisplayName(pObject, sFullPath);
+              out_usages.PushBack(sFullPath);
+
+              if (out_usages.GetCount() >= maxResults)
+                return;
+            }
+          }
+        }
+      }
+      break;
+
+      case ezPropertyCategory::Array:
+      case ezPropertyCategory::Set:
+      {
+        if (pProp->GetFlags().IsSet(ezPropertyFlags::StandardType))
+        {
+          ezInt32 iCount = pAccessor->GetCount(pObject, pProp);
+
+          for (ezInt32 i = 0; i < iCount; ++i)
+          {
+            ezVariant value;
+            if (pAccessor->GetValue(pObject, pProp, value, i).Succeeded())
+            {
+              const ezString& sValue = value.Get<ezString>();
+              if (sValue == sAssetToFind)
+              {
+                ezStringBuilder sFullPath;
+                GenerateFullDisplayName(pObject, sFullPath);
+                out_usages.PushBack(sFullPath);
+
+                if (out_usages.GetCount() >= maxResults)
+                  return;
+              }
+            }
+          }
+        }
+      }
+      break;
+
+      case ezPropertyCategory::Map:
+      {
+        if (pProp->GetFlags().IsSet(ezPropertyFlags::StandardType))
+        {
+          ezDynamicArray<ezVariant> keys;
+          if (pAccessor->GetKeys(pObject, pProp, keys).Succeeded())
+          {
+            for (const ezVariant& key : keys)
+            {
+              ezVariant value;
+              if (pAccessor->GetValue(pObject, pProp, value, key).Succeeded())
+              {
+                const ezString& sValue = value.Get<ezString>();
+                if (sValue == sAssetToFind)
+                {
+                  ezStringBuilder sFullPath;
+                  GenerateFullDisplayName(pObject, sFullPath);
+                  out_usages.PushBack(sFullPath);
+
+                  if (out_usages.GetCount() >= maxResults)
+                    return;
+                }
+              }
+            }
+          }
+        }
+      }
+      break;
+
+      default:
+        break;
+    }
+  }
+
+
+  // Process children recursively
+  for (const ezDocumentObject* pChild : pObject->GetChildren())
+  {
+    if (pChild->GetParentPropertyType() != nullptr &&
+        pChild->GetParentPropertyType()->GetAttributeByType<ezTemporaryAttribute>() != nullptr)
+      continue;
+
+    FindAssetUsagesInternal(sAssetToFind, pChild, out_usages, maxResults);
+
+    if (out_usages.GetCount() >= maxResults)
+      return;
+  }
+}
