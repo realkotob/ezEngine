@@ -229,18 +229,12 @@ namespace ezMath
   template <typename T>
   EZ_FORCE_INLINE T Lerp(T f1, T f2, float fFactor)
   {
-    // value is not included in format string, to prevent requirement on FormatString.h, to break #include cycles
-    EZ_ASSERT_DEBUG((fFactor >= -0.00001f) && (fFactor <= 1.0f + 0.00001f), "lerp: factor is not in the range [0; 1]");
-
     return (T)(f1 + (fFactor * (f2 - f1)));
   }
 
   template <typename T>
   EZ_FORCE_INLINE T Lerp(T f1, T f2, double fFactor)
   {
-    // value is not included in format string, to prevent requirement on FormatString.h, to break #include cycles
-    EZ_ASSERT_DEBUG((fFactor >= -0.00001) && (fFactor <= 1.0 + 0.00001), "lerp: factor is not in the range [0; 1]");
-
     return (T)(f1 + (fFactor * (f2 - f1)));
   }
 

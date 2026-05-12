@@ -335,11 +335,11 @@ namespace ezMath
   template <typename T>
   void Swap(T& ref_f1, T& ref_f2); // [tested]
 
-  /// \brief Returns the linear interpolation of f1 and f2. factor is a value between 0 and 1.
+  /// \brief Returns the linear interpolation of f1 and f2. factor is typically a value between 0 and 1. If factor is outside of that range, the result is a linear extrapolation.
   template <typename T>
   [[nodiscard]] T Lerp(T f1, T f2, float fFactor); // [tested]
 
-  /// \brief Returns the linear interpolation of f1 and f2. factor is a value between 0 and 1.
+  /// \brief Returns the linear interpolation of f1 and f2. factor is typically a value between 0 and 1. If factor is outside of that range, the result is a linear extrapolation.
   template <typename T>
   [[nodiscard]] T Lerp(T f1, T f2, double fFactor); // [tested]
 

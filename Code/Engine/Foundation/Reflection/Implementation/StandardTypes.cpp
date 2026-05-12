@@ -66,6 +66,10 @@ EZ_BEGIN_STATIC_REFLECTED_TYPE(ezTime, ezNoBase, 1, ezRTTINoAllocator)
     EZ_SCRIPT_FUNCTION_PROPERTY(MakeFromHours, In, "Hours")->AddFlags(ezPropertyFlags::PureFunction),
     EZ_SCRIPT_FUNCTION_PROPERTY(MakeZero)->AddFlags(ezPropertyFlags::PureFunction),
     EZ_SCRIPT_FUNCTION_PROPERTY(AsFloatInSeconds),
+    EZ_SCRIPT_FUNCTION_PROPERTY(GetMilliseconds),
+    EZ_SCRIPT_FUNCTION_PROPERTY(GetSeconds),
+    EZ_SCRIPT_FUNCTION_PROPERTY(GetMinutes),
+    EZ_SCRIPT_FUNCTION_PROPERTY(GetHours),
   }
   EZ_END_FUNCTIONS;
 }

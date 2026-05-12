@@ -133,7 +133,8 @@ PS_OUT main(PS_IN Input)
 #  if defined(USE_MATERIAL_REFRACTION)
   ApplyRefraction(matData, light);
 #  else
-  float specularNormalization = lerp(1.0f, 1.0f / matData.opacity, saturate(matData.opacity * 10.0f));
+  // Curve fitted to original 1 / opacity but with max value of ~11 to prevent large values when opacity is close to 0.
+  float specularNormalization = 1.0f / (matData.opacity + 0.092) + 0.086;
   light.specularLight *= specularNormalization;
 #  endif
 #endif
