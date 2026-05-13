@@ -19,6 +19,11 @@ EZ_BEGIN_STATIC_REFLECTED_ENUM(ezProjectileReaction, 2)
   EZ_ENUM_CONSTANT(ezProjectileReaction::PassThrough)
 EZ_END_STATIC_REFLECTED_ENUM;
 
+EZ_BEGIN_STATIC_REFLECTED_ENUM(ezProjectileBounceOrientation, 1)
+  EZ_ENUM_CONSTANT(ezProjectileBounceOrientation::Reflection),
+  EZ_ENUM_CONSTANT(ezProjectileBounceOrientation::Spinning)
+EZ_END_STATIC_REFLECTED_ENUM;
+
 EZ_BEGIN_STATIC_REFLECTED_TYPE(ezProjectileSurfaceInteraction, ezNoBase, 3, ezRTTIDefaultAllocator<ezProjectileSurfaceInteraction>)
 {
   EZ_BEGIN_PROPERTIES
@@ -29,12 +34,13 @@ EZ_BEGIN_STATIC_REFLECTED_TYPE(ezProjectileSurfaceInteraction, ezNoBase, 3, ezRT
     EZ_MEMBER_PROPERTY("ImpulseType", m_uiImpulseType)->AddAttributes(new ezDynamicEnumAttribute("PhysicsImpulseType")),
     EZ_MEMBER_PROPERTY("Impulse", m_fImpulse),
     EZ_MEMBER_PROPERTY("Damage", m_fDamage),
+    EZ_MEMBER_PROPERTY("InertiaRatio", m_fInertiaRatio)->AddAttributes(new ezDefaultValueAttribute(5.0f)),
   }
   EZ_END_PROPERTIES;
 }
 EZ_END_STATIC_REFLECTED_TYPE;
 
-EZ_BEGIN_COMPONENT_TYPE(ezProjectileComponent, 7, ezComponentMode::Dynamic)
+EZ_BEGIN_COMPONENT_TYPE(ezProjectileComponent, 8, ezComponentMode::Dynamic)
 {
   EZ_BEGIN_PROPERTIES
   {
@@ -44,6 +50,9 @@ EZ_BEGIN_COMPONENT_TYPE(ezProjectileComponent, 7, ezComponentMode::Dynamic)
     EZ_MEMBER_PROPERTY("SpawnPrefabOnStatic", m_bSpawnPrefabOnStatic),
     EZ_RESOURCE_MEMBER_PROPERTY("OnDeathPrefab", m_hDeathPrefab)->AddAttributes(new ezAssetBrowserAttribute("CompatibleAsset_Prefab", ezDependencyFlags::Package)),
     EZ_MEMBER_PROPERTY("CollisionLayer", m_uiCollisionLayer)->AddAttributes(new ezDynamicEnumAttribute("PhysicsCollisionLayer")),
+    EZ_MEMBER_PROPERTY("Radius", m_fRadius)->AddAttributes(new ezClampValueAttribute(0.0f, ezVariant())),
+    EZ_ENUM_MEMBER_PROPERTY("BounceOrientation", ezProjectileBounceOrientation, m_BounceOrientation)->AddAttributes(new ezDefaultValueAttribute((ezInt8)ezProjectileBounceOrientation::Reflection)),
+    EZ_MEMBER_PROPERTY("StaticVelocityRatio", m_fStaticVelocityRatio)->AddAttributes(new ezDefaultValueAttribute(0.05f), new ezClampValueAttribute(0.0f, ezVariant())),
     EZ_BITFLAGS_MEMBER_PROPERTY("ShapeTypesToHit", ezPhysicsShapeType, m_ShapeTypesToHit)->AddAttributes(new ezDefaultValueAttribute(ezVariant(ezPhysicsShapeType::Default & ~(ezPhysicsShapeType::Trigger)))),
     EZ_ACCESSOR_PROPERTY("FallbackSurface", GetFallbackSurfaceFile, SetFallbackSurfaceFile)->AddAttributes(new ezAssetBrowserAttribute("CompatibleAsset_Surface", ezDependencyFlags::Package)),
     EZ_ARRAY_MEMBER_PROPERTY("Interactions", m_SurfaceInteractions),
@@ -58,16 +67,38 @@ EZ_BEGIN_COMPONENT_TYPE(ezProjectileComponent, 7, ezComponentMode::Dynamic)
   {
     new ezCategoryAttribute("Gameplay"),
     new ezDirectionVisualizerAttribute(ezBasisAxis::PositiveX, 0.4f, ezColor::OrangeRed),
+    new ezSphereManipulatorAttribute("Radius"),
+    new ezSphereVisualizerAttribute("Radius"),
   }
   EZ_END_ATTRIBUTES;
 }
 EZ_END_DYNAMIC_REFLECTED_TYPE;
 // clang-format on
 
+namespace
+{
+  /// \brief Helper function to recalculate the sphere position from hit position
+  /// \param vOrigin is expected to be the initial position of the particle before SweepTest
+  ezVec3 CalculateSphereCenterPosition(const ezVec3& vOrigin, const ezVec3& vDirection, const ezPhysicsCastResult& castResult, float fPenetrationDepth)
+  {
+    if (castResult.m_fDistance == 0.0f)
+    {
+      // It says that the hit position is "behind" (if we move along vDirection) vOrigin
+      // Thus, return the original position
+      return vOrigin;
+    }
+
+    return vOrigin + vDirection * (castResult.m_fDistance + fPenetrationDepth);
+  }
+} // namespace
+
 ezProjectileComponent::ezProjectileComponent()
 {
   m_fMetersPerSecond = 10.0f;
   m_uiCollisionLayer = 0;
+  m_fRadius = 0.0f;
+  m_BounceOrientation = ezProjectileBounceOrientation::Reflection;
+  m_fStaticVelocityRatio = 0.05f;
   m_fGravityMultiplier = 0.0f;
   m_vVelocity.SetZero();
   m_bSpawnPrefabOnStatic = false;
@@ -77,6 +108,8 @@ ezProjectileComponent::~ezProjectileComponent() = default;
 
 void ezProjectileComponent::Update()
 {
+  const float fPenetrationDepth = m_fRadius * 0.5f;
+
   if (m_fGravityMultiplier == 0.0f && m_fMetersPerSecond == 0.0f)
     return;
 
@@ -85,6 +118,7 @@ void ezProjectileComponent::Update()
   if (pPhysicsInterface)
   {
     ezGameObject* pEntity = GetOwner();
+    const ezVec3 vCurPosition = pEntity->GetGlobalPosition();
 
     const float fTimeDiff = (float)GetWorld()->GetClock().GetTimeDiff().GetSeconds();
 
@@ -109,8 +143,12 @@ void ezProjectileComponent::Update()
     queryParams.m_ShapeTypes = m_ShapeTypesToHit;
 
     ezPhysicsCastResult castResult;
-    if (pPhysicsInterface->Raycast(castResult, pEntity->GetGlobalPosition(), vCurDirection, fDistance, queryParams))
+    if (QueryCollision(*pPhysicsInterface, castResult, vCurPosition, vCurDirection, fDistance, queryParams))
     {
+      const ezVec3 vNewCenterPosition = (m_fRadius > 0.0f)
+        ? CalculateSphereCenterPosition(vCurPosition, vCurDirection, castResult, fPenetrationDepth)
+        : castResult.m_vPosition;
+
       const ezSurfaceResourceHandle hSurface = castResult.m_hSurface.IsValid() ? castResult.m_hSurface : m_hFallbackSurface;
 
       const ezInt32 iInteraction = FindSurfaceInteraction(hSurface);
@@ -118,7 +156,7 @@ void ezProjectileComponent::Update()
       if (iInteraction == -1)
       {
         GetWorld()->DeleteObjectDelayed(GetOwner()->GetHandle());
-        vNewPosition = castResult.m_vPosition;
+        vNewPosition = vNewCenterPosition;
       }
       else
       {
@@ -188,52 +226,68 @@ void ezProjectileComponent::Update()
 
 
           GetWorld()->DeleteObjectDelayed(GetOwner()->GetHandle());
-          vNewPosition = castResult.m_vPosition;
+          vNewPosition = vNewCenterPosition;
         }
         else if (interaction.m_Reaction == ezProjectileReaction::Reflect || interaction.m_Reaction == ezProjectileReaction::Bounce)
         {
-          /// \todo Should reflect around the actual hit position
-          /// \todo Should preserve travel distance while reflecting
-
-          // const float fLength = (vPos - pEntity->GetGlobalPosition()).GetLength();
-
-          vNewPosition = pEntity->GetGlobalPosition(); // vPos;
-
-          const ezVec3 vNewDirection = vCurDirection.GetReflectedVector(castResult.m_vNormal);
-
-          ezQuat qRot = ezQuat::MakeShortestRotation(vCurDirection, vNewDirection);
-
-          GetOwner()->SetGlobalRotation(qRot * GetOwner()->GetGlobalRotation());
-
-          m_vVelocity = qRot * m_vVelocity;
-
-          if (interaction.m_Reaction == ezProjectileReaction::Bounce)
+          vNewPosition = vCurPosition;
+          const float velocityToNormalProj = m_vVelocity.Dot(castResult.m_vNormal);
+          if (velocityToNormalProj < 0.0f)
           {
-            ezResourceLock<ezSurfaceResource> pSurface(hSurface, ezResourceAcquireMode::BlockTillLoaded);
+            // the same as m_vVelocity.GetReflectedVector but reuse precalculated velocityToNormalProj
+            ezVec3 vNewVelocity = m_vVelocity - 2.0f * velocityToNormalProj * castResult.m_vNormal;
 
-            if (pSurface)
+            // Position of the projectile at the moment of reflection
+
+            if (interaction.m_Reaction == ezProjectileReaction::Bounce)
             {
-              m_vVelocity *= pSurface->GetDescriptor().m_fPhysicsRestitution;
-            }
+              ezResourceLock<ezSurfaceResource> pSurface(hSurface, ezResourceAcquireMode::BlockTillLoaded);
 
-            if (m_vVelocity.GetLength() < 1.0f)
-            {
-              m_vVelocity = ezVec3::MakeZero();
-              m_fGravityMultiplier = 0.0f;
-
-              if (m_bSpawnPrefabOnStatic)
+              if (pSurface)
               {
-                SpawnDeathPrefab();
-                GetWorld()->DeleteObjectDelayed(GetOwner()->GetHandle());
+                vNewVelocity *= pSurface->GetDescriptor().m_fPhysicsRestitution;
+              }
+
+              if (ShouldStopProjectile(*pPhysicsInterface, castResult, vNewVelocity))
+              {
+                vNewVelocity = ezVec3::MakeZero();
+                m_fGravityMultiplier = 0.0f;
+
+                if (m_bSpawnPrefabOnStatic)
+                {
+                  SpawnDeathPrefab();
+                  GetWorld()->DeleteObjectDelayed(GetOwner()->GetHandle());
+                }
               }
             }
+
+            const ezVec3 vPositionOnReflection = vCurPosition + castResult.m_fDistance * vCurDirection;
+            if (m_BounceOrientation == ezProjectileBounceOrientation::Reflection)
+            {
+              ApplyReflectionRotation(vCurDirection, castResult.m_vNormal);
+            }
+            else
+            {
+              ApplySpinningRotation(interaction, castResult, vPositionOnReflection, vCurDirection, vNewVelocity);
+            }
+            const float fAbsVelocity = m_vVelocity.GetLength();
+            // condition velocityToNormalProj < 0.0f implies fAbsVelocity is non-zero
+            const float fTimeBeforeReflection = castResult.m_fDistance / fAbsVelocity;
+            const float fTimeLeft = ezMath::Max(0.0f, fTimeDiff - fTimeBeforeReflection);
+            // Path travelled back after the reflection
+            vNewPosition = vPositionOnReflection + vNewVelocity * fTimeLeft;
+            m_vVelocity = vNewVelocity;
+          }
+          else
+          {
+            vNewPosition += m_vVelocity * fTimeDiff;
           }
         }
         else if (interaction.m_Reaction == ezProjectileReaction::Attach)
         {
           m_fMetersPerSecond = 0.0f;
           m_fGravityMultiplier = 0.0f;
-          vNewPosition = castResult.m_vPosition;
+          vNewPosition = vNewCenterPosition;
 
           ezGameObject* pObject;
           if (GetWorld()->TryGetObject(castResult.m_hActorObject, pObject))
@@ -243,13 +297,13 @@ void ezProjectileComponent::Update()
         }
         else if (interaction.m_Reaction == ezProjectileReaction::PassThrough)
         {
-          vNewPosition = pEntity->GetGlobalPosition() + fDistance * vCurDirection;
+          vNewPosition = vCurPosition + fDistance * vCurDirection;
         }
       }
     }
     else
     {
-      vNewPosition = pEntity->GetGlobalPosition() + fDistance * vCurDirection;
+      vNewPosition = vCurPosition + fDistance * vCurDirection;
     }
 
     GetOwner()->SetGlobalPosition(vNewPosition);
@@ -295,6 +349,18 @@ void ezProjectileComponent::SerializeComponent(ezWorldWriter& inout_stream) cons
 
   // Version 6
   s << m_bSpawnPrefabOnStatic;
+
+  // Version 8
+  s << m_fRadius;
+  ezProjectileBounceOrientation::StorageType bounceOrientation = m_BounceOrientation;
+  s << bounceOrientation;
+  s << m_fStaticVelocityRatio;
+
+  // Version 8
+  for (const auto& ia : m_SurfaceInteractions)
+  {
+    s << ia.m_fInertiaRatio;
+  }
 }
 
 void ezProjectileComponent::DeserializeComponent(ezWorldReader& inout_stream)
@@ -353,8 +419,101 @@ void ezProjectileComponent::DeserializeComponent(ezWorldReader& inout_stream)
   {
     s >> m_bSpawnPrefabOnStatic;
   }
+
+  if (uiVersion >= 8)
+  {
+    s >> m_fRadius;
+    ezProjectileBounceOrientation::StorageType bounceOrientation = ezProjectileBounceOrientation::Reflection;
+    s >> bounceOrientation;
+    m_BounceOrientation = (ezProjectileBounceOrientation::Enum)bounceOrientation;
+    s >> m_fStaticVelocityRatio;
+
+    for (auto& ia : m_SurfaceInteractions)
+    {
+      s >> ia.m_fInertiaRatio;
+    }
+  }
+  else
+  {
+    m_fRadius = 0.0f;
+    m_BounceOrientation = ezProjectileBounceOrientation::Reflection;
+    m_fStaticVelocityRatio = 0.05f;
+  }
 }
 
+
+bool ezProjectileComponent::QueryCollision(const ezPhysicsWorldModuleInterface& physicsInterface, ezPhysicsCastResult& out_result, const ezVec3& vStart, const ezVec3& vDirection, float fDistance, const ezPhysicsQueryParameters& queryParams) const
+{
+  if (m_fRadius > 0.0f)
+  {
+    return physicsInterface.SweepTestSphere(out_result, m_fRadius, vStart, vDirection, fDistance, queryParams);
+  }
+
+  return physicsInterface.Raycast(out_result, vStart, vDirection, fDistance, queryParams);
+}
+
+void ezProjectileComponent::ApplyReflectionRotation(const ezVec3& vCurDirection, const ezVec3& vSurfaceNormal)
+{
+  const ezVec3 vNewDirection = vCurDirection.GetReflectedVector(vSurfaceNormal);
+  const ezQuat qRot = ezQuat::MakeShortestRotation(vCurDirection, vNewDirection);
+  GetOwner()->SetGlobalRotation(qRot * GetOwner()->GetGlobalRotation());
+}
+
+void ezProjectileComponent::ApplySpinningRotation(const ezProjectileSurfaceInteraction& interaction,
+                                                  const ezPhysicsCastResult& castResult,
+                                                  const ezVec3& vPositionOnReflection,
+                                                  const ezVec3& vCurDirection,
+                                                  const ezVec3& vNewVelocity)
+{
+  if (interaction.m_fInertiaRatio == 0.0f)
+    return;
+
+  const ezVec3 vRelativeHitPosOnReflection = castResult.m_vPosition - vPositionOnReflection;
+  const float vRelativeHitPosLength = vRelativeHitPosOnReflection.GetLength();
+  ezVec3 vForceRadialVector;
+  if (m_fRadius > 0.0f && vRelativeHitPosLength > 0.0f)
+  {
+    // if the projectile has a radius it is natural to assume that the torque is created
+    // by the force acting on the radial vector connecting the center to the contact point
+    vForceRadialVector = vRelativeHitPosOnReflection / vRelativeHitPosLength;
+  }
+  else
+  {
+    // Otherwise assume radial vector coincides with direction
+    vForceRadialVector = vCurDirection;
+  }
+
+  // Assuming the timeDiff is small we can say that the difference between velocities
+  // is proportional to the acting force
+  ezVec3 vEffectiveForce = m_vVelocity - vNewVelocity;
+  // We assume that this force is responsible for torque and angular momentum
+  ezVec3 vEffectiveTorque = -vForceRadialVector.CrossRH(vEffectiveForce) / interaction.m_fInertiaRatio;
+
+  const float fAngle = ezMath::Min(vEffectiveTorque.GetLength(), ezMath::Pi<float>());
+  if (fAngle > 0.0f)
+  {
+    ezAngle angle = ezAngle::MakeFromRadian(fAngle);
+    ezQuat qRot = ezQuat::MakeFromAxisAndAngle(vEffectiveTorque.GetNormalized(), angle);
+    GetOwner()->SetGlobalRotation(qRot * GetOwner()->GetGlobalRotation());
+  }
+}
+
+bool ezProjectileComponent::ShouldStopProjectile(const ezPhysicsWorldModuleInterface& physicsInterface, const ezPhysicsCastResult& castResult, const ezVec3& vVelocity)
+{
+  const ezVec3 vGravity = physicsInterface.GetGravity();
+  if (!vGravity.IsZero())
+  {
+    const ezVec3 vGravityDir = vGravity.GetNormalized();
+    // Check that projectile has hit the ground
+    // if not - return false to make sure it won't hang in the air after being stopped
+    if (-vGravityDir.Dot(castResult.m_vNormal) < ezMath::Cos(ezAngle::MakeFromDegree(40.f)))
+    {
+      return false;
+    }
+  }
+
+  return vVelocity.GetLength() < m_fStaticVelocityRatio * m_fMetersPerSecond;
+}
 
 ezInt32 ezProjectileComponent::FindSurfaceInteraction(const ezSurfaceResourceHandle& hSurface) const
 {
