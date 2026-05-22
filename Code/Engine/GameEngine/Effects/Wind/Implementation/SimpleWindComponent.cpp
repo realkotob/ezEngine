@@ -129,8 +129,16 @@ void ezSimpleWindComponent::ComputeNextState()
   float fStrengthDiff = fMaxStrength - fMinStrength;
   float fStrengthChange = fStrengthDiff * 0.2f;
 
-  m_NextChange = m_LastChange + ezTime::MakeFromSeconds(rng.DoubleMinMax(2.0f, 5.0f));
-  m_fNextStrength = ezMath::Clamp<float>(m_fLastStrength + (float)rng.DoubleMinMax(-fStrengthChange, +fStrengthChange), fMinStrength, fMaxStrength);
+  if (minWind == ezWindStrength::None && maxWind == ezWindStrength::None)
+  {
+    m_NextChange = m_LastChange + ezTime::MakeFromSeconds(0.2f);
+    m_fNextStrength *= 0.5f;
+  }
+  else
+  {
+    m_NextChange = m_LastChange + ezTime::MakeFromSeconds(rng.DoubleMinMax(2.0f, 5.0f));
+    m_fNextStrength = ezMath::Clamp<float>(m_fLastStrength + (float)rng.DoubleMinMax(-fStrengthChange, +fStrengthChange), fMinStrength, fMaxStrength);
+  }
 
   const ezVec3 vMainDir = GetOwner()->GetGlobalDirForwards();
 

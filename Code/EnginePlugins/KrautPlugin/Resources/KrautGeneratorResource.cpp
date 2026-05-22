@@ -763,17 +763,20 @@ static void GenerateLodMeshData(const ezKrautGeneratorResource::ezKrautSharedTre
           const auto& branchExtra = extraData.m_Branches[branchIdx];
           float fBranchDist = 0;
 
-          if (srcVtx.m_uiBranchNodeIdx >= treeStructure.m_BranchStructures[branchIdx].m_Nodes.size())
+          if (srcVtx.m_uiBranchNodeIdx != 0xFFFFFFFF) // unused vertex!
           {
-            fBranchDist = branchExtra.m_Nodes.PeekBack().m_fBendinessAlongBranch;
-            ezUInt32 nodeIdx = srcVtx.m_uiBranchNodeIdx - (ezUInt32)treeStructure.m_BranchStructures[branchIdx].m_Nodes.size();
-            const ezVec3 lastPos = ToEzSwizzle(treeStructure.m_BranchStructures[branchIdx].m_Nodes.back().m_vPosition);
-            const ezVec3 tipPos = ToEzSwizzle(treeLod.m_BranchLODs[branchIdx].m_TipNodes[nodeIdx].m_vPosition);
-            fBranchDist += (tipPos - lastPos).GetLength() * fTwigBendiness;
-          }
-          else
-          {
-            fBranchDist = branchExtra.m_Nodes[srcVtx.m_uiBranchNodeIdx].m_fBendinessAlongBranch;
+            if (srcVtx.m_uiBranchNodeIdx >= treeStructure.m_BranchStructures[branchIdx].m_Nodes.size())
+            {
+              fBranchDist = branchExtra.m_Nodes.PeekBack().m_fBendinessAlongBranch;
+              ezUInt32 nodeIdx = srcVtx.m_uiBranchNodeIdx - (ezUInt32)treeStructure.m_BranchStructures[branchIdx].m_Nodes.size();
+              const ezVec3 lastPos = ToEzSwizzle(treeStructure.m_BranchStructures[branchIdx].m_Nodes.back().m_vPosition);
+              const ezVec3 tipPos = ToEzSwizzle(treeLod.m_BranchLODs[branchIdx].m_TipNodes[nodeIdx].m_vPosition);
+              fBranchDist += (tipPos - lastPos).GetLength() * fTwigBendiness;
+            }
+            else
+            {
+              fBranchDist = branchExtra.m_Nodes[srcVtx.m_uiBranchNodeIdx].m_fBendinessAlongBranch;
+            }
           }
 
           if (branchExtra.m_iParentBranch < 0)

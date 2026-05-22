@@ -425,11 +425,13 @@ protected:
   virtual void DoPrepareToDie() override;
   void UpdatePreview();
   void PropertyEventHandler(const ezDocumentObjectPropertyEvent& e);
+  void StructureEventHandler(const ezDocumentObjectStructureEvent& e);
 
 protected:
   QHBoxLayout* m_pLayout = nullptr;
   ezQtCurve1DButtonWidget* m_pButton = nullptr;
   ezCopyOnBroadcastEvent<const ezDocumentObjectPropertyEvent&>::Unsubscriber m_Unsub;
+  ezCopyOnBroadcastEvent<const ezDocumentObjectStructureEvent&>::Unsubscriber m_Unsub2;
 };
 
 /// *** COLOR GRADIENT ***

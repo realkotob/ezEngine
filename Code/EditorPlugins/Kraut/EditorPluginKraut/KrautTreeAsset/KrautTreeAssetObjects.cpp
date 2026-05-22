@@ -157,8 +157,8 @@ EZ_BEGIN_STATIC_REFLECTED_TYPE(ezKrautAssetBranchType, ezNoBase, 1, ezRTTINoAllo
     EZ_MEMBER_PROPERTY("FrondOrientationDeviation", m_MaxFrondOrientationDeviation)->AddAttributes(new ezClampValueAttribute(ezAngle::MakeFromDegree(0), ezAngle::MakeFromDegree(180))),
     EZ_MEMBER_PROPERTY("AlignFrondsOnSurface", m_bAlignFrondsOnSurface),
     EZ_ENUM_MEMBER_PROPERTY("FrondContourMode", ezKrautFrondContourMode, m_FrondContourMode),
-    EZ_MEMBER_PROPERTY("FrondContour", m_FrondContour)->AddAttributes(new ezColorAttribute(ezColor::LawnGreen), new ezCurveExtentsAttribute(0.0, true, 1.0, true), new ezClampValueAttribute(0.0, 1.0), new ezDefaultValueAttribute(1.0)),
-    EZ_MEMBER_PROPERTY("FrondHeight", m_fFrondHeight)->AddAttributes(new ezDefaultValueAttribute(0.5f), new ezClampValueAttribute(0.0f, 10.0f), new ezSuffixAttribute("m")),
+    EZ_MEMBER_PROPERTY("FrondContour", m_FrondContour)->AddAttributes(new ezColorAttribute(ezColor::LawnGreen), new ezCurveExtentsAttribute(0.0, true, 1.0, true), new ezClampValueAttribute(-1.0, 1.0), new ezDefaultValueAttribute(1.0)),
+    EZ_MEMBER_PROPERTY("FrondHeight", m_fFrondHeight)->AddAttributes(new ezDefaultValueAttribute(0.5f), new ezClampValueAttribute(-10.0f, 10.0f), new ezSuffixAttribute("m")),
     EZ_MEMBER_PROPERTY("FrondHeightScale", m_FrondHeight)->AddAttributes(new ezColorAttribute(ezColor::LawnGreen), new ezCurveExtentsAttribute(0.0, true, 1.0, true), new ezClampValueAttribute(-1.0, 1.0)),
     //EZ_MEMBER_PROPERTY("FrondVariationColor", m_FrondVariationColor)->AddAttributes(new ezDefaultValueAttribute(ezColor::White)),
 
@@ -196,7 +196,7 @@ EZ_BEGIN_STATIC_REFLECTED_TYPE(ezKrautAssetLod, ezNoBase, 1, ezRTTIDefaultAlloca
     EZ_MEMBER_PROPERTY("MaxFrondDetail", m_iMaxFrondDetail)->AddAttributes(new ezDefaultValueAttribute(32), new ezClampValueAttribute(0, 64)),
     EZ_MEMBER_PROPERTY("FrondDetailReduction", m_iFrondDetailReduction)->AddAttributes(new ezDefaultValueAttribute(0), new ezClampValueAttribute(0, 32)),
     EZ_MEMBER_PROPERTY("LodDistance", m_uiLodDistance)->AddAttributes(new ezDefaultValueAttribute(0), new ezClampValueAttribute(0, 1000), new ezSuffixAttribute("m")),
-    EZ_ENUM_MEMBER_PROPERTY("BranchSpikeTipMode", ezKrautBranchSpikeTipMode, m_BranchSpikeTipMode),
+    EZ_ENUM_MEMBER_PROPERTY("BranchSpikeTipMode", ezKrautBranchSpikeTipMode, m_BranchSpikeTipMode)->AddAttributes(new ezHiddenAttribute()), // effect too rarely useful, should be improved
   }
   EZ_END_PROPERTIES;
 }
@@ -493,7 +493,7 @@ void CopyKrautConfig(Kraut::SpawnNodeDesc& ref_node, const ezKrautAssetBranchTyp
   ref_node.m_uiFrondDetail = bt.m_uiFrondDetail;
   CopyKrautCurve(ref_node.m_FrondContour, bt.m_FrondContour, 40, 1.0f);
   ref_node.m_FrondContourMode = (Kraut::SpawnNodeDesc::FrondContourMode)bt.m_FrondContourMode.GetValue();
-  ref_node.m_fFrondHeight = (bt.m_FrondContourMode == ezKrautFrondContourMode::Off) ? 0.0f : bt.m_fFrondHeight;
+  ref_node.m_fFrondHeight = (bt.m_FrondContourMode == ezKrautFrondContourMode::Off) ? 0.0f : -bt.m_fFrondHeight;
   CopyKrautCurve(ref_node.m_FrondHeight, bt.m_FrondHeight, 50, 0.0f);
   ref_node.m_fFrondWidth = bt.m_fFrondWidth;
   CopyKrautCurve(ref_node.m_FrondWidth, bt.m_FrondWidth, 50, 1.0f);

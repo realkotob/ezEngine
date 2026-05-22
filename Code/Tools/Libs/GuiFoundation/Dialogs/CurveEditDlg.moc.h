@@ -43,14 +43,15 @@ private Q_SLOTS:
   void OnBeginOperationEvent(QString name);
   void OnEndOperationEvent(bool commit);
 
-  void on_actionUndo_triggered();
-  void on_actionRedo_triggered();
   void on_ButtonOk_clicked();
   void on_ButtonCancel_clicked();
   void on_ButtonUndo_clicked();
   void on_ButtonRedo_clicked();
 
 private:
+  void on_actionUndo_triggered();
+  void on_actionRedo_triggered();
+
   static QByteArray s_LastDialogGeometry;
 
   void RetrieveCurveState();

@@ -1999,6 +1999,7 @@ void ezQtPropertyEditorCurve1DWidget::SetSelection(const ezArrayPtr<ezPropertySe
 void ezQtPropertyEditorCurve1DWidget::OnInit()
 {
   m_pObjectAccessor->GetObjectManager()->m_PropertyEvents.AddEventHandler(ezMakeDelegate(&ezQtPropertyEditorCurve1DWidget::PropertyEventHandler, this), m_Unsub);
+  m_pObjectAccessor->GetObjectManager()->m_StructureEvents.AddEventHandler(ezMakeDelegate(&ezQtPropertyEditorCurve1DWidget::StructureEventHandler, this), m_Unsub2);
 }
 
 void ezQtPropertyEditorCurve1DWidget::DoPrepareToDie()
@@ -2024,6 +2025,23 @@ void ezQtPropertyEditorCurve1DWidget::PropertyEventHandler(const ezDocumentObjec
   {
     UpdatePreview();
   }
+}
+
+void ezQtPropertyEditorCurve1DWidget::StructureEventHandler(const ezDocumentObjectStructureEvent& e)
+{
+  if (e.m_EventType != ezDocumentObjectStructureEvent::Type::AfterObjectAdded && e.m_EventType != ezDocumentObjectStructureEvent::Type::AfterObjectRemoved)
+    return;
+
+  if (IsUndead())
+    return;
+
+  if (m_Items.IsEmpty())
+    return;
+
+  if (e.m_sParentProperty != "ControlPoints")
+    return;
+
+  UpdatePreview();
 }
 
 void ezQtPropertyEditorCurve1DWidget::UpdatePreview()

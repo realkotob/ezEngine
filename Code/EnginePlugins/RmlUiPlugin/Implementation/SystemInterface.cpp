@@ -53,7 +53,7 @@ namespace ezRmlUiInternal
         break;
 
       case Rml::Log::LT_ASSERT:
-        EZ_REPORT_FAILURE(sMessage.c_str());
+        ezLog::Error("{}", ezRmlUiConversionUtils::ToStringView(sMessage));
         break;
 
       case Rml::Log::LT_WARNING:

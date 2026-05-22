@@ -33,6 +33,7 @@ protected:
   virtual void InternalRedraw() override;
   virtual void ProcessMessageEventHandler(const ezEditorEngineDocumentMsg* pMsg) override;
   void PropertyEventHandler(const ezDocumentObjectPropertyEvent& e);
+  void StructureEventHandler(const ezDocumentObjectStructureEvent& e);
 
 private Q_SLOTS:
   void onBranchTypeSelected(int index);

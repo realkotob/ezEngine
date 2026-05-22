@@ -264,6 +264,11 @@ namespace Kraut
 
       AlignVertexRing(vertexRing[iCurRing], curBranchNode.m_vPosition, vRotationalDir);
 
+      // Skip the last segment if the tip ring is degenerate and no tip geometry follows it.
+      // Roundness=0 makes the last node have zero thickness, producing broken triangles otherwise.
+      if (n == uiNumLodNodes - 1 && branchStructureLod.m_TipNodes.empty() && curBranchNode.m_fThickness < 0.001f)
+        break;
+
       GenerateSegmentTriangles(mesh, branchStructure, vertexRing[iPrevRing], vertexRing[iCurRing], prevBranchNode.m_fTexCoordV, curBranchNode.m_fTexCoordV, fFlareRotation0, fFlareRotation1, false, uiPrevNodeID, uiCurNodeID);
 
       aeMath::Swap(iPrevRing, iCurRing);

@@ -57,26 +57,29 @@ void ezKrautTreeViewContext::SetCamera(const ezViewRedrawMsgToEngine* pMsg)
   auto hGenRes = m_pKrautTreeContext->GetResource();
   if (hGenRes.IsValid())
   {
-    ezResourceLock<ezKrautGeneratorResource> pGenRes(hGenRes, ezResourceAcquireMode::AllowLoadingFallback);
-    const auto& pDesc = pGenRes->GetDescriptor();
-    if (pDesc != nullptr)
+    ezResourceLock<ezKrautGeneratorResource> pGenRes(hGenRes, ezResourceAcquireMode::AllowLoadingFallback_NeverFail);
+    if (pGenRes.GetAcquireResult() != ezResourceAcquireResult::None)
     {
-      const float fDistSqr = fDistance * fDistance;
-      float fPrevMaxDist = 0.0f;
-
-      for (ezUInt32 n = 0; n < 5; ++n)
+      const auto& pDesc = pGenRes->GetDescriptor();
+      if (pDesc != nullptr)
       {
-        const Kraut::LodDesc& lodDesc = pDesc->m_LodDesc[n];
-        if (lodDesc.m_Mode != Kraut::LodMode::Full)
-          break;
+        const float fDistSqr = fDistance * fDistance;
+        float fPrevMaxDist = 0.0f;
 
-        const float fMaxDist = lodDesc.m_uiLodDistance * pDesc->m_fLodDistanceScale * pDesc->m_fUniformScaling;
-        if (fDistSqr >= (fPrevMaxDist * fPrevMaxDist) && fDistSqr < (fMaxDist * fMaxDist))
+        for (ezUInt32 n = 0; n < 5; ++n)
         {
-          iAutoLod = (ezInt32)n;
-          break;
+          const Kraut::LodDesc& lodDesc = pDesc->m_LodDesc[n];
+          if (lodDesc.m_Mode != Kraut::LodMode::Full)
+            break;
+
+          const float fMaxDist = lodDesc.m_uiLodDistance * pDesc->m_fLodDistanceScale * pDesc->m_fUniformScaling;
+          if (fDistSqr >= (fPrevMaxDist * fPrevMaxDist) && fDistSqr < (fMaxDist * fMaxDist))
+          {
+            iAutoLod = (ezInt32)n;
+            break;
+          }
+          fPrevMaxDist = fMaxDist;
         }
-        fPrevMaxDist = fMaxDist;
       }
     }
   }

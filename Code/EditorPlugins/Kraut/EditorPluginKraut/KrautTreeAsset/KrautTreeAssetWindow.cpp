@@ -352,11 +352,13 @@ ezQtKrautTreeAssetDocumentWindow::ezQtKrautTreeAssetDocumentWindow(ezAssetDocume
   FinishWindowCreation();
 
   GetDocument()->GetObjectManager()->m_PropertyEvents.AddEventHandler(ezMakeDelegate(&ezQtKrautTreeAssetDocumentWindow::PropertyEventHandler, this));
+  GetDocument()->GetObjectManager()->m_StructureEvents.AddEventHandler(ezMakeDelegate(&ezQtKrautTreeAssetDocumentWindow::StructureEventHandler, this));
 }
 
 ezQtKrautTreeAssetDocumentWindow::~ezQtKrautTreeAssetDocumentWindow()
 {
   GetDocument()->GetObjectManager()->m_PropertyEvents.RemoveEventHandler(ezMakeDelegate(&ezQtKrautTreeAssetDocumentWindow::PropertyEventHandler, this));
+  GetDocument()->GetObjectManager()->m_StructureEvents.RemoveEventHandler(ezMakeDelegate(&ezQtKrautTreeAssetDocumentWindow::StructureEventHandler, this));
 
   RestoreResource();
 }
@@ -686,6 +688,17 @@ void ezQtKrautTreeAssetDocumentWindow::PropertyEventHandler(const ezDocumentObje
       RebuildLodCombo();
     }
 
+    UpdatePreview();
+  }
+}
+
+void ezQtKrautTreeAssetDocumentWindow::StructureEventHandler(const ezDocumentObjectStructureEvent& e)
+{
+  if (e.m_EventType != ezDocumentObjectStructureEvent::Type::AfterObjectAdded && e.m_EventType != ezDocumentObjectStructureEvent::Type::AfterObjectRemoved)
+    return;
+
+  if (e.m_sParentProperty == "ControlPoints")
+  {
     UpdatePreview();
   }
 }
