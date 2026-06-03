@@ -5,6 +5,8 @@
 #include <RendererCore/Lights/SimplifiedDataProvider.h>
 #include <RendererCore/Pipeline/ExtractedRenderData.h>
 #include <RendererCore/RenderContext/RenderContext.h>
+#include <RendererCore/RenderGraph/RenderGraph.h>
+#include <RendererCore/RenderGraph/RenderGraphPassBuilder.h>
 #include <RendererFoundation/Profiling/Profiling.h>
 
 #include <RendererCore/../../../Data/Base/Shaders/Common/LightDataSimplified.h>
@@ -29,6 +31,20 @@ void ezSimplifiedDataGPU::BindResources(ezRenderContext* pRenderContext)
   bindGroup.BindTexture("SkyIrradianceTexture", ezReflectionPool::GetSkyIrradianceTexture());
 
   bindGroup.BindBuffer("ezSimplifiedDataConstants", m_hConstantBuffer);
+}
+
+void ezSimplifiedDataGPU::AddReadDependencies(ezRenderGraph& ref_graph, ezRenderGraphPassBuilder& ref_pass, ezUInt32 uiSkyIrradianceIndex, ezEnum<ezCameraUsageHint> cameraUsageHint)
+{
+  // Reflection specular and sky irradiance textures
+  {
+    ezGALTextureHandle hReflSpec = ezReflectionPool::GetReflectionSpecularTexture(uiSkyIrradianceIndex, cameraUsageHint);
+    if (!hReflSpec.IsInvalidated())
+      ref_pass.ReadTexture(ref_graph.ImportTexture(hReflSpec), {}, ezGALResourceState::ShaderResource, ezGALShaderStageFlags::PixelShader);
+
+    ezGALTextureHandle hSkyIrradiance = ezReflectionPool::GetSkyIrradianceTexture();
+    if (!hSkyIrradiance.IsInvalidated())
+      ref_pass.ReadTexture(ref_graph.ImportTexture(hSkyIrradiance), {}, ezGALResourceState::ShaderResource);
+  }
 }
 
 //////////////////////////////////////////////////////////////////////////

@@ -18,10 +18,9 @@ public:
   ezAOPass();
   ~ezAOPass();
 
-  virtual bool GetRenderTargetDescriptions(const ezView& view, const ezArrayPtr<ezGALTextureCreationDescription* const> inputs, ezArrayPtr<ezGALTextureCreationDescription> outputs) override;
+  virtual ezStatus AddRenderPasses(const ezViewData& viewData, const ezCamera& camera, ezRenderGraph& ref_graph, const ezArrayPtr<const ezRenderPipelinePinConnection> inputs, ezArrayPtr<ezRenderPipelinePinConnection> outputs) override;
+  virtual ezStatus AddRenderPassesInactive(const ezViewData& viewData, const ezCamera& camera, ezRenderGraph& ref_graph, const ezArrayPtr<const ezRenderPipelinePinConnection> inputs, ezArrayPtr<ezRenderPipelinePinConnection> outputs) override;
 
-  virtual void Execute(const ezRenderViewContext& renderViewContext, const ezArrayPtr<ezRenderPipelinePassConnection* const> inputs, const ezArrayPtr<ezRenderPipelinePassConnection* const> outputs) override;
-  virtual void ExecuteInactive(const ezRenderViewContext& renderViewContext, const ezArrayPtr<ezRenderPipelinePassConnection* const> inputs, const ezArrayPtr<ezRenderPipelinePassConnection* const> outputs) override;
   virtual ezResult Serialize(ezStreamWriter& inout_stream) const override;
   virtual ezResult Deserialize(ezStreamReader& inout_stream) override;
 
@@ -59,4 +58,10 @@ protected:
   ezShaderResourceHandle m_hDownscaleShader;
   ezShaderResourceHandle m_hSSAOShader;
   ezShaderResourceHandle m_hBlurShader;
+
+  // Graph state
+  ezRenderGraphTextureHandle m_hHzbTexture;
+  ezTempHybridArray<ezVec2, 8> m_HzbSizes;
+  ezTempHybridArray<ezGALTextureRange, 8> m_HzbResourceViews;
+  ezRenderGraphTextureHandle m_hSSAOTemp;
 };

@@ -8,6 +8,7 @@
 #include <RendererCore/Lights/SphereReflectionProbeComponent.h>
 #include <RendererCore/Meshes/MeshComponentBase.h>
 #include <RendererCore/Pipeline/RenderDataManager.h>
+#include <RendererCore/RenderGraph/RenderGraph.h>
 #include <RendererFoundation/Device/Device.h>
 #include <RendererFoundation/Resources/Texture.h>
 
@@ -361,6 +362,7 @@ void ezReflectionPool::Data::CreateSkyIrradianceTexture()
     desc.m_Format = ezGALResourceFormat::RGBAHalf;
     desc.m_Type = ezGALTextureType::Texture2D;
     desc.m_TextureFlags.Add(ezGALTextureUsageFlags::RenderTarget | ezGALTextureUsageFlags::UnorderedAccess);
+    desc.m_ResourceAccess.m_bImmutable = false;
 
     m_hSkyIrradianceTexture = pDevice->CreateTexture(desc);
     pDevice->GetTexture(m_hSkyIrradianceTexture)->SetDebugName("Sky Irradiance Texture");

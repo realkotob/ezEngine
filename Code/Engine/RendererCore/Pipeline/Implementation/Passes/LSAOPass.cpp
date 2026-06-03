@@ -89,175 +89,157 @@ ezLSAOPass::~ezLSAOPass()
   ezRenderContext::DeleteConstantBufferStorage(m_hLineSweepCB);
 }
 
-bool ezLSAOPass::GetRenderTargetDescriptions(const ezView& view, const ezArrayPtr<ezGALTextureCreationDescription* const> inputs, ezArrayPtr<ezGALTextureCreationDescription> outputs)
+ezStatus ezLSAOPass::AddRenderPasses(const ezViewData& viewData, const ezCamera& camera, ezRenderGraph& ref_graph, const ezArrayPtr<const ezRenderPipelinePinConnection> inputs, ezArrayPtr<ezRenderPipelinePinConnection> outputs)
 {
-  EZ_ASSERT_DEBUG(inputs.GetCount() == 1, "Unexpected number of inputs for ezScreenSpaceAmbientOcclusionPass.");
+  ezRenderGraphTextureHandle hDepthInput = inputs[m_PinDepthInput.m_uiInputIndex].m_TextureHandle;
+  if (hDepthInput.IsInvalidated())
+    return ezStatus(ezFmt("Depth: Not connected"));
 
-  // Depth
-  if (!inputs[m_PinDepthInput.m_uiInputIndex])
-  {
-    ezLog::Error("No depth input connected to ssao pass!");
-    return false;
-  }
-  if (!inputs[m_PinDepthInput.m_uiInputIndex]->m_TextureFlags.IsSet(ezGALTextureUsageFlags::ShaderResource))
-  {
-    ezLog::Error("All ssao pass inputs must allow shader resource view.");
-    return false;
-  }
-  if (inputs[m_PinDepthInput.m_uiInputIndex]->m_SampleCount != ezGALMSAASampleCount::None)
-  {
-    ezLog::Error("'{0}' input must be resolved", GetName());
-    return false;
-  }
+  const ezGALTextureCreationDescription depthDesc = ref_graph.GetTextureDesc(hDepthInput);
+  if (depthDesc.m_SampleCount != ezGALMSAASampleCount::None)
+    return ezStatus(ezFmt("Depth input must be resolved"));
 
-  // Output format matches input format but is f16.
-  outputs[m_PinOutput.m_uiOutputIndex] = *inputs[m_PinDepthInput.m_uiInputIndex];
-  outputs[m_PinOutput.m_uiOutputIndex].m_Format = ezGALResourceFormat::RGHalf;
+  // Create output
+  ezGALTextureCreationDescription outputDesc = depthDesc;
+  outputDesc.m_Format = ezGALResourceFormat::RGHalf;
+  ezRenderGraphTextureHandle hOutput = ref_graph.CreateTexture(outputDesc);
+  outputs[m_PinOutput.m_uiOutputIndex].m_TextureHandle = hOutput;
 
-  return true;
-}
+  // Setup line sweep data
+  SetupLineSweepData(ezVec3I32(depthDesc.m_uiWidth, depthDesc.m_uiHeight, depthDesc.m_uiArraySize));
 
-void ezLSAOPass::InitRenderPipelinePass(const ezArrayPtr<ezRenderPipelinePassConnection* const> inputs, const ezArrayPtr<ezRenderPipelinePassConnection* const> outputs)
-{
-  // Todo: Support half resolution.
-  const ezGALTextureCreationDescription& desc = inputs[m_PinDepthInput.m_uiInputIndex]->m_Desc;
-  SetupLineSweepData(ezVec3I32(desc.m_uiWidth, desc.m_uiHeight, desc.m_uiArraySize));
-}
+  // Import persistent buffers
+  ezRenderGraphBufferHandle hLineSweepOutputBuffer = ref_graph.ImportBuffer(m_hLineSweepOutputBuffer);
 
-void ezLSAOPass::Execute(const ezRenderViewContext& renderViewContext, const ezArrayPtr<ezRenderPipelinePassConnection* const> inputs, const ezArrayPtr<ezRenderPipelinePassConnection* const> outputs)
-{
-  if (m_bConstantsDirty)
-  {
-    ezLSAOConstants* cb = ezRenderContext::GetConstantBufferData<ezLSAOConstants>(m_hLineSweepCB);
-    cb->DepthCutoffDistance = m_fDepthCutoffDistance;
-    cb->OcclusionFalloff = m_fOcclusionFalloff;
-  }
-
-  if (m_bSweepDataDirty)
-  {
-    const ezGALTextureCreationDescription& desc = inputs[m_PinDepthInput.m_uiInputIndex]->m_Desc;
-    SetupLineSweepData(ezVec3I32(desc.m_uiWidth, desc.m_uiHeight, desc.m_uiArraySize));
-  }
-  if (outputs[m_PinOutput.m_uiOutputIndex] == nullptr)
-    return;
-
-  ezGALDevice* pDevice = ezGALDevice::GetDefaultDevice();
-
-  ezGALRenderingSetup renderingSetup;
-  ezGALTextureHandle tempTexture;
+  // Temp texture for distributed gathering
+  ezRenderGraphTextureHandle hTempTexture;
   if (m_bDistributedGathering)
   {
-    ezGALTextureCreationDescription tempTextureDesc = outputs[m_PinOutput.m_uiOutputIndex]->m_Desc;
-    tempTextureDesc.m_TextureFlags.Add(ezGALTextureUsageFlags::ShaderResource | ezGALTextureUsageFlags::RenderTarget);
-    tempTexture = ezGPUResourcePool::GetDefaultInstance()->GetRenderTarget(tempTextureDesc);
-    renderingSetup.SetColorTarget(0, pDevice->GetDefaultRenderTargetView(tempTexture));
+    hTempTexture = ref_graph.CreateTexture(outputDesc);
   }
-  else
+
+  // Line Sweep (compute)
   {
-    renderingSetup.SetColorTarget(0, pDevice->GetDefaultRenderTargetView(outputs[m_PinOutput.m_uiOutputIndex]->m_TextureHandle));
+    auto pass = ref_graph.AddComputePass("LSAOLineSweep");
+    pass.ReadTexture(hDepthInput, {}, ezGALResourceState::ShaderResource);
+    pass.WriteBuffer(hLineSweepOutputBuffer);
+    pass.SetExecuteCallback([=](const ezRenderGraphContext& ctx)
+      {
+      // Update constants
+      if (m_bConstantsDirty)
+      {
+        ezLSAOConstants* cb = ezRenderContext::GetConstantBufferData<ezLSAOConstants>(m_hLineSweepCB);
+        cb->DepthCutoffDistance = m_fDepthCutoffDistance;
+        cb->OcclusionFalloff = m_fOcclusionFalloff;
+        m_bConstantsDirty = false;
+      }
+      const ezRenderViewContext& renderViewContext = *ctx.GetUserData<ezRenderViewContext>();
+      ezBindGroupBuilder& bindGroup = renderViewContext.m_pRenderContext->GetBindGroup();
+      bindGroup.BindBuffer("ezLSAOConstants", m_hLineSweepCB);
+      bindGroup.BindTexture("DepthBuffer", ctx.ResolveTexture(hDepthInput));
+      renderViewContext.m_pRenderContext->BindShader(m_hShaderLineSweep);
+      bindGroup.BindBuffer("LineInstructions", m_hLineInfoBuffer);
+      bindGroup.BindBuffer("LineSweepOutputBuffer", ctx.ResolveBuffer(hLineSweepOutputBuffer), m_LineSweepOutputBufferRange);
+
+      const ezUInt32 dispatchSize = m_uiNumSweepLines / SSAO_LINESWEEP_THREAD_GROUP + (m_uiNumSweepLines % SSAO_LINESWEEP_THREAD_GROUP != 0 ? 1 : 0);
+      const ezUInt32 uiRenderedInstances = renderViewContext.m_pCamera->IsStereoscopic() ? 2 : 1;
+      renderViewContext.m_pRenderContext->Dispatch(dispatchSize, uiRenderedInstances).IgnoreResult(); });
   }
 
-  // Line Sweep part (compute)
+  // Gather pass
   {
-    EZ_PROFILE_SCOPE("Line Sweep");
-    auto computeScope = renderViewContext.m_pRenderContext->BeginComputeScope(renderViewContext, "Line Sweep");
-    ezBindGroupBuilder& bindGroup = renderViewContext.m_pRenderContext->GetBindGroup();
-    bindGroup.BindBuffer("ezLSAOConstants", m_hLineSweepCB);
-    bindGroup.BindTexture("DepthBuffer", inputs[m_PinDepthInput.m_uiInputIndex]->m_TextureHandle);
-    renderViewContext.m_pRenderContext->BindShader(m_hShaderLineSweep);
-    bindGroup.BindBuffer("LineInstructions", m_hLineInfoBuffer);
-    bindGroup.BindBuffer("LineSweepOutputBuffer", m_hLineSweepOutputBuffer, m_LineSweepOutputBufferRange);
+    ezRenderGraphTextureHandle hGatherOutput = m_bDistributedGathering ? hTempTexture : hOutput;
 
-    const ezUInt32 dispatchSize = m_uiNumSweepLines / SSAO_LINESWEEP_THREAD_GROUP + (m_uiNumSweepLines % SSAO_LINESWEEP_THREAD_GROUP != 0 ? 1 : 0);
-    const ezUInt32 uiRenderedInstances = renderViewContext.m_pCamera->IsStereoscopic() ? 2 : 1;
-    renderViewContext.m_pRenderContext->Dispatch(dispatchSize, uiRenderedInstances).IgnoreResult();
+    auto pass = ref_graph.AddGraphicsPass("LSAOGather");
+    pass.AddColorTarget(hGatherOutput);
+    pass.ReadTexture(hDepthInput, {}, ezGALResourceState::ShaderResource, ezGALShaderStageFlags::PixelShader);
+    pass.ReadBuffer(hLineSweepOutputBuffer);
+    pass.SetStereoscopic(camera.IsStereoscopic());
+    pass.SetExecuteCallback([=](const ezRenderGraphContext& ctx)
+      {
+      const ezRenderViewContext& renderViewContext = *ctx.GetUserData<ezRenderViewContext>();
+
+      if (m_bDistributedGathering)
+        renderViewContext.m_pRenderContext->SetShaderPermutationVariable("DISTRIBUTED_SSAO_GATHERING", "TRUE");
+      else
+        renderViewContext.m_pRenderContext->SetShaderPermutationVariable("DISTRIBUTED_SSAO_GATHERING", "FALSE");
+
+      switch (m_DepthCompareFunction)
+      {
+        case ezLSAODepthCompareFunction::Depth:
+          renderViewContext.m_pRenderContext->SetShaderPermutationVariable("LSAO_DEPTH_COMPARE", "LSAO_DEPTH_COMPARE_DEPTH");
+          break;
+        case ezLSAODepthCompareFunction::Normal:
+          renderViewContext.m_pRenderContext->SetShaderPermutationVariable("LSAO_DEPTH_COMPARE", "LSAO_DEPTH_COMPARE_NORMAL");
+          break;
+        case ezLSAODepthCompareFunction::NormalAndSampleDistance:
+          renderViewContext.m_pRenderContext->SetShaderPermutationVariable("LSAO_DEPTH_COMPARE", "LSAO_DEPTH_COMPARE_NORMAL_AND_SAMPLE_DISTANCE");
+          break;
+      }
+
+      ezBindGroupBuilder& bindGroup = renderViewContext.m_pRenderContext->GetBindGroup();
+      bindGroup.BindBuffer("ezLSAOConstants", m_hLineSweepCB);
+      bindGroup.BindTexture("DepthBuffer", ctx.ResolveTexture(hDepthInput));
+      renderViewContext.m_pRenderContext->BindShader(m_hShaderGather);
+      bindGroup.BindBuffer("LineInstructions", m_hLineInfoBuffer);
+      bindGroup.BindBuffer("LineSweepOutputBuffer", ctx.ResolveBuffer(hLineSweepOutputBuffer), m_LineSweepOutputBufferRange);
+      renderViewContext.m_pRenderContext->BindNullMeshBuffer(ezGALPrimitiveTopology::Triangles, 1);
+      renderViewContext.m_pRenderContext->DrawMeshBuffer().IgnoreResult(); });
   }
 
-  // Gather samples.
-  {
-    EZ_PROFILE_SCOPE("Gather");
-    auto pCommandEncoder = renderViewContext.m_pRenderContext->BeginRenderingScope(renderViewContext, renderingSetup, "Gather Samples", renderViewContext.m_pCamera->IsStereoscopic());
-
-    if (m_bDistributedGathering)
-      renderViewContext.m_pRenderContext->SetShaderPermutationVariable("DISTRIBUTED_SSAO_GATHERING", "TRUE");
-    else
-      renderViewContext.m_pRenderContext->SetShaderPermutationVariable("DISTRIBUTED_SSAO_GATHERING", "FALSE");
-
-    switch (m_DepthCompareFunction)
-    {
-      case ezLSAODepthCompareFunction::Depth:
-        renderViewContext.m_pRenderContext->SetShaderPermutationVariable("LSAO_DEPTH_COMPARE", "LSAO_DEPTH_COMPARE_DEPTH");
-        break;
-      case ezLSAODepthCompareFunction::Normal:
-        renderViewContext.m_pRenderContext->SetShaderPermutationVariable("LSAO_DEPTH_COMPARE", "LSAO_DEPTH_COMPARE_NORMAL");
-        break;
-      case ezLSAODepthCompareFunction::NormalAndSampleDistance:
-        renderViewContext.m_pRenderContext->SetShaderPermutationVariable("LSAO_DEPTH_COMPARE", "LSAO_DEPTH_COMPARE_NORMAL_AND_SAMPLE_DISTANCE");
-        break;
-    }
-
-    ezBindGroupBuilder& bindGroup = renderViewContext.m_pRenderContext->GetBindGroup();
-    bindGroup.BindBuffer("ezLSAOConstants", m_hLineSweepCB);
-    bindGroup.BindTexture("DepthBuffer", inputs[m_PinDepthInput.m_uiInputIndex]->m_TextureHandle);
-    renderViewContext.m_pRenderContext->BindShader(m_hShaderGather);
-    bindGroup.BindBuffer("LineInstructions", m_hLineInfoBuffer);
-    bindGroup.BindBuffer("LineSweepOutputBuffer", m_hLineSweepOutputBuffer, m_LineSweepOutputBufferRange);
-    renderViewContext.m_pRenderContext->BindNullMeshBuffer(ezGALPrimitiveTopology::Triangles, 1);
-    renderViewContext.m_pRenderContext->DrawMeshBuffer().IgnoreResult();
-  }
-
-  // If enabled, average distributed gather samples and write to output.
+  // Average pass (only for distributed gathering)
   if (m_bDistributedGathering)
   {
-    EZ_PROFILE_SCOPE("Averaging");
+    auto pass = ref_graph.AddGraphicsPass("LSAOAverage");
+    pass.AddColorTarget(hOutput);
+    pass.ReadTexture(hTempTexture, {}, ezGALResourceState::ShaderResource, ezGALShaderStageFlags::PixelShader);
+    pass.ReadTexture(hDepthInput, {}, ezGALResourceState::ShaderResource, ezGALShaderStageFlags::PixelShader);
+    pass.SetStereoscopic(camera.IsStereoscopic());
+    pass.SetExecuteCallback([=](const ezRenderGraphContext& ctx)
+      {
+      const ezRenderViewContext& renderViewContext = *ctx.GetUserData<ezRenderViewContext>();
 
-    switch (m_DepthCompareFunction)
-    {
-      case ezLSAODepthCompareFunction::Depth:
-        renderViewContext.m_pRenderContext->SetShaderPermutationVariable("LSAO_DEPTH_COMPARE", "LSAO_DEPTH_COMPARE_DEPTH");
-        break;
-      case ezLSAODepthCompareFunction::Normal:
-        renderViewContext.m_pRenderContext->SetShaderPermutationVariable("LSAO_DEPTH_COMPARE", "LSAO_DEPTH_COMPARE_NORMAL");
-        break;
-      case ezLSAODepthCompareFunction::NormalAndSampleDistance:
-        renderViewContext.m_pRenderContext->SetShaderPermutationVariable("LSAO_DEPTH_COMPARE", "LSAO_DEPTH_COMPARE_NORMAL_AND_SAMPLE_DISTANCE");
-        break;
-    }
+      switch (m_DepthCompareFunction)
+      {
+        case ezLSAODepthCompareFunction::Depth:
+          renderViewContext.m_pRenderContext->SetShaderPermutationVariable("LSAO_DEPTH_COMPARE", "LSAO_DEPTH_COMPARE_DEPTH");
+          break;
+        case ezLSAODepthCompareFunction::Normal:
+          renderViewContext.m_pRenderContext->SetShaderPermutationVariable("LSAO_DEPTH_COMPARE", "LSAO_DEPTH_COMPARE_NORMAL");
+          break;
+        case ezLSAODepthCompareFunction::NormalAndSampleDistance:
+          renderViewContext.m_pRenderContext->SetShaderPermutationVariable("LSAO_DEPTH_COMPARE", "LSAO_DEPTH_COMPARE_NORMAL_AND_SAMPLE_DISTANCE");
+          break;
+      }
 
-    renderingSetup.Reset();
-    renderingSetup.SetColorTarget(0, pDevice->GetDefaultRenderTargetView(outputs[m_PinOutput.m_uiOutputIndex]->m_TextureHandle));
+      ezBindGroupBuilder& bindGroup = renderViewContext.m_pRenderContext->GetBindGroup();
+      bindGroup.BindBuffer("ezLSAOConstants", m_hLineSweepCB);
+      bindGroup.BindTexture("DepthBuffer", ctx.ResolveTexture(hDepthInput));
+      renderViewContext.m_pRenderContext->BindShader(m_hShaderAverage);
+      bindGroup.BindTexture("SSAOGatherOutput", ctx.ResolveTexture(hTempTexture));
 
-    auto pCommandEncoder = renderViewContext.m_pRenderContext->BeginRenderingScope(renderViewContext, renderingSetup, "Averaging", renderViewContext.m_pCamera->IsStereoscopic());
-
-    ezBindGroupBuilder& bindGroup = renderViewContext.m_pRenderContext->GetBindGroup();
-    bindGroup.BindBuffer("ezLSAOConstants", m_hLineSweepCB);
-    bindGroup.BindTexture("DepthBuffer", inputs[m_PinDepthInput.m_uiInputIndex]->m_TextureHandle);
-    renderViewContext.m_pRenderContext->BindShader(m_hShaderAverage);
-    bindGroup.BindTexture("SSAOGatherOutput", tempTexture);
-
-    renderViewContext.m_pRenderContext->BindNullMeshBuffer(ezGALPrimitiveTopology::Triangles, 1);
-    renderViewContext.m_pRenderContext->DrawMeshBuffer().IgnoreResult();
-
-    // Give back temp texture.
-    ezGPUResourcePool::GetDefaultInstance()->ReturnRenderTarget(tempTexture);
+      renderViewContext.m_pRenderContext->BindNullMeshBuffer(ezGALPrimitiveTopology::Triangles, 1);
+      renderViewContext.m_pRenderContext->DrawMeshBuffer().IgnoreResult(); });
   }
+
+  return EZ_SUCCESS;
 }
 
-void ezLSAOPass::ExecuteInactive(const ezRenderViewContext& renderViewContext, const ezArrayPtr<ezRenderPipelinePassConnection* const> inputs, const ezArrayPtr<ezRenderPipelinePassConnection* const> outputs)
+ezStatus ezLSAOPass::AddRenderPassesInactive(const ezViewData& viewData, const ezCamera& camera, ezRenderGraph& ref_graph, const ezArrayPtr<const ezRenderPipelinePinConnection> inputs, ezArrayPtr<ezRenderPipelinePinConnection> outputs)
 {
-  auto pOutput = outputs[m_PinOutput.m_uiOutputIndex];
-  if (pOutput == nullptr)
-  {
-    return;
-  }
+  ezRenderGraphTextureHandle hDepthInput = inputs[m_PinDepthInput.m_uiInputIndex].m_TextureHandle;
+  if (hDepthInput.IsInvalidated())
+    return ezStatus(ezFmt("Depth: Not connected"));
 
-  ezGALDevice* pDevice = ezGALDevice::GetDefaultDevice();
+  ezGALTextureCreationDescription outputDesc = ref_graph.GetTextureDesc(hDepthInput);
+  outputDesc.m_Format = ezGALResourceFormat::RGHalf;
+  ezRenderGraphTextureHandle hOutput = ref_graph.CreateTexture(outputDesc);
+  outputs[m_PinOutput.m_uiOutputIndex].m_TextureHandle = hOutput;
 
-  ezGALRenderingSetup renderingSetup;
-  renderingSetup.SetColorTarget(0, pDevice->GetDefaultRenderTargetView(pOutput->m_TextureHandle));
-  renderingSetup.SetClearColor(0, ezColor::White);
-
-  auto pCommandEncoder = ezRenderContext::BeginRenderingScope(renderViewContext, renderingSetup, "Clear");
+  auto pass = ref_graph.AddGraphicsPass("InactiveLSAO");
+  pass.AddColorTarget(hOutput, {}, ezGALRenderTargetLoadOp::Clear);
+  pass.SetClearColor(0, ezColor::White);
+  return EZ_SUCCESS;
 }
 
 ezResult ezLSAOPass::Serialize(ezStreamWriter& inout_stream) const
