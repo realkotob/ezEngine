@@ -69,6 +69,16 @@ void ezRenderPipeline::OnRenderEvent(const ezRenderGraphRenderEvent& e)
   }
   else if (e.m_Type == ezRenderGraphRenderEvent::Type::AfterGraphExecution && e.m_pGraph == m_pRenderGraph)
   {
+    {
+      ezRenderWorldRenderEvent renderEvent;
+      renderEvent.m_Type = ezRenderWorldRenderEvent::Type::AfterPipelineExecution;
+      renderEvent.m_pRenderViewContext = &m_RenderViewContext;
+      renderEvent.m_uiFrameCounter = ezRenderWorld::GetFrameCounter();
+
+      EZ_PROFILE_SCOPE("AfterPipelineExecution");
+      ezRenderWorld::s_RenderEvent.Broadcast(renderEvent);
+    }
+
     auto& data = m_Data[ezRenderWorld::GetDataIndexForRendering()];
     data.Clear();
     m_CurrentRenderThread = (ezThreadID)0;
@@ -556,7 +566,8 @@ bool ezRenderPipeline::AddRenderPasses(const ezViewData& viewData, const ezCamer
 
 bool ezRenderPipeline::UpdateTextureProviders()
 {
-  ezMap<ezRenderGraphTextureHandle, const ezRenderPipelineNodePin*> updates;
+  ezHashTable<ezRenderGraphTextureHandle, const ezRenderPipelineNodePin*, ezHashHelper<ezRenderGraphTextureHandle>, ezTempAllocatorWrapper> updates;
+  updates.Reserve(m_TextureProviderPins.GetCount());
   for (const ezRenderPipelineNodePin* pPin : m_TextureProviderPins)
   {
     const ezRenderPipelinePass* pPass = static_cast<const ezRenderPipelinePass*>(pPin->m_pParent);
@@ -1039,9 +1050,15 @@ void ezRenderPipeline::EnqueueRenderGraph(ezRenderContext* pRenderContext)
   }
 
   // Apply view dependencies: import shared textures with the required initial state.
-  for (const ezViewDependency& dep : data.GetViewDependencies())
+  for (const ezTextureDependency& dep : data.GetTextureViewDependencies())
   {
     m_pRenderGraph->ImportTexture(dep.m_hTexture, dep.m_RequiredState, dep.m_Stage);
+  }
+
+  // Apply view dependencies: import shared buffers with the required initial state.
+  for (const ezBufferDependency& dep : data.GetBufferViewDependencies())
+  {
+    m_pRenderGraph->ImportBuffer(dep.m_hBuffer, dep.m_RequiredState, dep.m_Stage);
   }
 
   EZ_ASSERT_DEV(m_CurrentRenderThread == (ezThreadID)0, "Render must not be called from multiple threads.");
@@ -1122,6 +1139,16 @@ void ezRenderPipeline::UpdateRenderContext(ezRenderGraphContext& ctx)
   {
     pRenderContext->SetShaderPermutationVariable(var.m_sName, var.m_sValue);
   }
+
+  {
+    ezRenderWorldRenderEvent renderEvent;
+    renderEvent.m_Type = ezRenderWorldRenderEvent::Type::BeforePipelineExecution;
+    renderEvent.m_pRenderViewContext = &m_RenderViewContext;
+    renderEvent.m_uiFrameCounter = ezRenderWorld::GetFrameCounter();
+
+    EZ_PROFILE_SCOPE("BeforePipelineExecution");
+    ezRenderWorld::s_RenderEvent.Broadcast(renderEvent);
+  }
 }
 
 const ezExtractedRenderData& ezRenderPipeline::GetRenderData() const
@@ -1134,10 +1161,27 @@ void ezRenderPipeline::AddViewDependency(ezGALTextureHandle hTexture, ezBitflags
   m_Data[ezRenderWorld::GetDataIndexForExtraction()].AddViewDependency(hTexture, requiredState, stage);
 }
 
+void ezRenderPipeline::AddViewDependency(ezGALBufferHandle hBuffer, ezBitflags<ezGALResourceState> requiredState, ezBitflags<ezGALShaderStageFlags> stage)
+{
+  m_Data[ezRenderWorld::GetDataIndexForExtraction()].AddViewDependency(hBuffer, requiredState, stage);
+}
+
 ezRenderDataBatchList ezRenderPipeline::GetRenderDataBatchesWithCategory(ezRenderData::Category category) const
 {
   auto& data = m_Data[ezRenderWorld::GetDataIndexForRendering()];
   return data.GetRenderDataBatchesWithCategory(category);
+}
+
+ezArrayPtr<const ezTextureDependency> ezRenderPipeline::GetTextureDependenciesWithCategory(ezRenderData::Category category) const
+{
+  auto& data = m_Data[ezRenderWorld::GetDataIndexForRendering()];
+  return data.GetTextureDependenciesWithCategory(category);
+}
+
+ezArrayPtr<const ezBufferDependency> ezRenderPipeline::GetBufferDependenciesWithCategory(ezRenderData::Category category) const
+{
+  auto& data = m_Data[ezRenderWorld::GetDataIndexForRendering()];
+  return data.GetBufferDependenciesWithCategory(category);
 }
 
 ezUInt32 ezRenderPipeline::AddRenderDataProcessor(RenderDataProcessor processor)

@@ -531,12 +531,13 @@ void ezEngineProcessDocumentContext::OnGALEvent(const ezGALDeviceEvent& e)
 
   ezRenderGraphTextureHandle hTex = m_pRenderGraph->ImportTexture(m_hThumbnailColorRT);
 
-  auto pass = m_pRenderGraph->AddTransferPass("Thumbnail Readback");
-  pass.ReadTexture(hTex, {}, ezGALResourceState::CopySource);
-  pass.HasSideEffects();
-  pass.SetExecuteCallback([this, hTex](const ezRenderGraphContext& ctx)
-    { m_ThumbnailReadback.ReadbackTexture(*ctx.GetCommandEncoder(), ctx.ResolveTexture(hTex)); });
-
+  {
+    auto pass = m_pRenderGraph->AddTransferPass("Thumbnail Readback");
+    pass.ReadTexture(hTex, {}, ezGALResourceState::CopySource);
+    pass.HasSideEffects();
+    pass.SetExecuteCallback([this, hTex](const ezRenderGraphContext& ctx)
+      { m_ThumbnailReadback.ReadbackTexture(*ctx.GetCommandEncoder(), ctx.ResolveTexture(hTex)); });
+  }
   ezRenderGraphManager::EnqueueRenderGraph(m_pRenderGraph);
   m_bThumbnailReadbackInFlight = true;
 }
@@ -568,7 +569,7 @@ void ezEngineProcessDocumentContext::CreateThumbnailViewContext(const ezCreateTh
 
   // Create render target for picking
   ezGALTextureCreationDescription tcd;
-  tcd.m_TextureFlags = ezGALTextureUsageFlags::RenderTarget;
+  tcd.m_TextureFlags = ezGALTextureUsageFlags::RenderTarget | ezGALTextureUsageFlags::ShaderResource;
   tcd.m_Format = ezGALResourceFormat::RGBAUByteNormalizedsRGB;
   tcd.m_Type = ezGALTextureType::Texture2D;
   tcd.m_uiWidth = m_uiThumbnailWidth;

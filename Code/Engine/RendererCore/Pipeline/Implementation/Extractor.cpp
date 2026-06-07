@@ -165,11 +165,49 @@ void ezExtractor::ExtractRenderData(const ezView& view, const ezGameObject* pObj
 #endif
   };
 
+  // Forwards the barrier dependencies recorded on the message into the extracted render data. The stored category is the (possibly redirected) category passed to msg.AddDependency; it is resolved here to the static/dynamic variant the same way render data categories are resolved, so dependencies land in the same category as the render data they accompany.
+  auto AddDependenciesFromMessage = [&](const ezMsgExtractRenderData& msg, bool bDynamic) {
+    for (ezTextureDependency dep : msg.m_TextureDependencies)
+    {
+      dep.m_uiCategory = (msg.m_OverrideCategory != ezInvalidRenderDataCategory)
+                           ? msg.m_OverrideCategory.m_uiValue
+                           : ezRenderData::ResolveCategory(ezRenderData::Category(dep.m_uiCategory), bDynamic).m_uiValue;
+      extractedRenderData.AddDependency(dep);
+    }
+
+    for (ezBufferDependency dep : msg.m_BufferDependencies)
+    {
+      dep.m_uiCategory = (msg.m_OverrideCategory != ezInvalidRenderDataCategory)
+                           ? msg.m_OverrideCategory.m_uiValue
+                           : ezRenderData::ResolveCategory(ezRenderData::Category(dep.m_uiCategory), bDynamic).m_uiValue;
+      extractedRenderData.AddDependency(dep);
+    }
+  };
+
   if (pObject->IsStatic())
   {
     ezUInt16 uiComponentVersion = pObject->GetComponentVersion();
 
-    auto cachedRenderData = ezRenderWorld::GetCachedRenderData(view, pObject->GetHandle(), uiComponentVersion);
+    ezArrayPtr<const ezTextureDependency> cachedTextureDependencies;
+    ezArrayPtr<const ezBufferDependency> cachedBufferDependencies;
+    auto cachedRenderData = ezRenderWorld::GetCachedRenderData(view, pObject->GetHandle(), uiComponentVersion, cachedTextureDependencies, cachedBufferDependencies);
+
+    // Apply per-object cached dependencies once. On cache-hit frames SendMessage is skipped for the owning components, so their dependencies must come from the cache here. On the frame the data is cached the dependencies are also applied through AddDependenciesFromMessage, but the per-object cache is still empty at that point, so there is no duplication.
+    {
+      for (ezTextureDependency dep : cachedTextureDependencies)
+      {
+        if (msg.m_OverrideCategory != ezInvalidRenderDataCategory)
+          dep.m_uiCategory = msg.m_OverrideCategory.m_uiValue;
+        extractedRenderData.AddDependency(dep);
+      }
+
+      for (ezBufferDependency dep : cachedBufferDependencies)
+      {
+        if (msg.m_OverrideCategory != ezInvalidRenderDataCategory)
+          dep.m_uiCategory = msg.m_OverrideCategory.m_uiValue;
+        extractedRenderData.AddDependency(dep);
+      }
+    }
 
 #if EZ_ENABLED(EZ_COMPILE_FOR_DEBUG)
     for (ezUInt32 i = 1; i < cachedRenderData.GetCount(); ++i)
@@ -213,6 +251,8 @@ void ezExtractor::ExtractRenderData(const ezView& view, const ezGameObject* pObj
       const ezComponent* pComponent = components[uiComponentIndex];
 
       msg.m_ExtractedRenderData.Clear();
+      msg.m_TextureDependencies.Clear();
+      msg.m_BufferDependencies.Clear();
       msg.m_uiNumCacheIfStatic = 0;
 
       if (pComponent->SendMessage(msg))
@@ -231,10 +271,22 @@ void ezExtractor::ExtractRenderData(const ezView& view, const ezGameObject* pObj
             newCacheEntry.m_uiPartIndex = static_cast<ezUInt16>(uiPartIndex);
           }
 
-          ezRenderWorld::CacheRenderData(view, pObject->GetHandle(), pComponent->GetHandle(), uiComponentVersion, newCacheEntries);
+          // Cache the dependencies with their resolved (static) category, matching how render data categories are cached without the override applied. The override is re-applied on read.
+          for (ezTextureDependency& dep : msg.m_TextureDependencies)
+          {
+            dep.m_uiCategory = ezRenderData::ResolveCategory(ezRenderData::Category(dep.m_uiCategory), false).m_uiValue;
+          }
+
+          for (ezBufferDependency& dep : msg.m_BufferDependencies)
+          {
+            dep.m_uiCategory = ezRenderData::ResolveCategory(ezRenderData::Category(dep.m_uiCategory), false).m_uiValue;
+          }
+
+          ezRenderWorld::CacheRenderData(view, pObject->GetHandle(), pComponent->GetHandle(), uiComponentVersion, newCacheEntries, msg.m_TextureDependencies, msg.m_BufferDependencies);
         }
 
         AddRenderDataFromMessage(msg);
+        AddDependenciesFromMessage(msg, false);
       }
       else if (pComponent->IsActiveAndInitialized()) // component does not handle extract message at all
       {
@@ -253,9 +305,12 @@ void ezExtractor::ExtractRenderData(const ezView& view, const ezGameObject* pObj
   else
   {
     msg.m_ExtractedRenderData.Clear();
+    msg.m_TextureDependencies.Clear();
+    msg.m_BufferDependencies.Clear();
     pObject->SendMessage(msg);
 
     AddRenderDataFromMessage(msg);
+    AddDependenciesFromMessage(msg, true);
   }
 }
 
@@ -293,7 +348,7 @@ void ezVisibleObjectsExtractor::Extract(const ezView& view, const ezDynamicArray
 {
   ezMsgExtractRenderData msg;
   msg.m_pView = &view;
-  
+
   EZ_LOCK(view.GetWorld()->GetReadMarker());
   msg.m_pRenderDataManager = view.GetWorld()->GetModuleReadOnly<ezRenderDataManager>();
 
