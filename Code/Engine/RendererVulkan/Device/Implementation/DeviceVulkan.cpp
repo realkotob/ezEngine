@@ -489,7 +489,7 @@ ezResult ezGALDeviceVulkan::InitPlatform()
   }
   {
     m_properties = m_physicalDevice.getProperties2();
-    ezLog::Warning("Selected physical device \"{}\" for device creation.", m_properties.properties.deviceName);
+    ezLog::Dev("Selected physical device \"{}\" for device creation.", m_properties.properties.deviceName);
 
     // This is a workaround for broken lavapipe drivers which cannot handle label scopes that span across multiple command buffers.
     ezStringBuilder sDeviceName = ezStringUtf8(m_properties.properties.deviceName).GetView();
@@ -1087,6 +1087,13 @@ void ezGALDeviceVulkan::DestroySamplerStatePlatform(ezGALSamplerState* pSamplerS
   ezGALSamplerStateVulkan* pVulkanSamplerState = static_cast<ezGALSamplerStateVulkan*>(pSamplerState);
   pVulkanSamplerState->DeInitPlatform(this).IgnoreResult();
   EZ_DELETE(&m_Allocator, pVulkanSamplerState);
+}
+
+void ezGALDeviceVulkan::RecreateSamplerStatePlatform(ezGALSamplerState* pSamplerState)
+{
+  ezGALSamplerStateVulkan* pVulkanSamplerState = static_cast<ezGALSamplerStateVulkan*>(pSamplerState);
+  pVulkanSamplerState->DeInitPlatform(this).AssertSuccess();
+  pVulkanSamplerState->InitPlatform(this).AssertSuccess();
 }
 
 ezGALBindGroupLayout* ezGALDeviceVulkan::CreateBindGroupLayoutPlatform(const ezGALBindGroupLayoutCreationDescription& Description)
