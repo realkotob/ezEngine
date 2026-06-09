@@ -1,6 +1,6 @@
 # Asset Types
 
-Kraut Tree;Kraut Tree;;https://ezengine.net/pages/docs/terrain/kraut-overview.html
+Kraut Tree;Kraut Tree;;https://ezengine.net/pages/docs/terrain/kraut-tree-asset.html
 
 GoodRandomSeeds;Good Random Seeds
 ezKrautBranchTypeMode::Regular;Regular
@@ -118,3 +118,8 @@ ezKrautAssetLod::MaxFrondDetail;Max Frond Detail;The maximum detail value for a 
 ezKrautAssetLod::FrondDetailReduction;Frond Detail Reduction;How much the frond detail will be reduced in this LOD, before it is clamped to MaxFrondDetail.
 ezKrautAssetLod::LodDistance;Use LOD up to Distance;This value specifies at what distance this LOD will be used.\nAt lower distances more detailed LODs are used (unless this is already LOD 0).
 ezKrautAssetLod::BranchSpikeTipMode;Branch Spike Tip Mode;
+
+
+# Components
+
+ezKrautTreeComponent;Kraut Tree;;https://ezengine.net/pages/docs/terrain/kraut-tree-component.html

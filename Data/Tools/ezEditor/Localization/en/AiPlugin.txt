@@ -5,6 +5,7 @@
 ezAiNavMeshPathTestComponent;Navmesh Path Test;;https://ezengine.net/pages/docs/ai/AiPlugin/navmesh-path-test-component.html
 ezNavMeshObstacleComponent;Navmesh Obstacle;;https://ezengine.net/pages/docs/ai/AiPlugin/navmesh-obstacle-component.html
 ezAiNavigationComponent;AI Navigation;;https://ezengine.net/pages/docs/ai/AiPlugin/navigation-component.html
+ezDetourCrowdAgentComponent;Detour Crowd Agent;;https://ezengine.net/pages/docs/ai/AiPlugin/detour-crowd-agent-component.html
 
 # UI
 
