@@ -12,7 +12,7 @@ endif()
 
 # Set CMake policies
 if (${CMAKE_VERSION} VERSION_GREATER_EQUAL "4.1")
-  cmake_policy(SET CMP0194 NEW)
+  cmake_policy(SET CMP0194 OLD)
 endif()
 
 include("${CMAKE_CURRENT_SOURCE_DIR}/ezCMakeConfig.cmake")
