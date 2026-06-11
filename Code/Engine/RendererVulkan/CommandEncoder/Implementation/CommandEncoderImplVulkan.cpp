@@ -26,13 +26,13 @@
 #include <RendererVulkan/Utils/BarrierUtilsVulkan.h>
 #include <RendererVulkan/Utils/ConversionUtilsVulkan.h>
 
-ezGALCommandEncoderImplVulkan::ezGALCommandEncoderImplVulkan(ezGALDeviceVulkan& device)
-  : m_GALDeviceVulkan(device)
+ezGALCommandEncoderImplVulkan::ezGALCommandEncoderImplVulkan(ezGALDeviceVulkan& ref_device)
+  : m_GALDeviceVulkan(ref_device)
 {
-  m_vkDevice = device.GetVulkanDevice();
-  m_pUniformBufferPool = EZ_NEW(device.GetAllocator(), ezUniformBufferPoolVulkan, &device);
+  m_VkDevice = ref_device.GetVulkanDevice();
+  m_pUniformBufferPool = EZ_NEW(ref_device.GetAllocator(), ezUniformBufferPoolVulkan, &ref_device);
   m_pUniformBufferPool->Initialize();
-  m_pWritePool = EZ_NEW(device.GetAllocator(), ezDescriptorWritePoolVulkan, &device);
+  m_pWritePool = EZ_NEW(ref_device.GetAllocator(), ezDescriptorWritePoolVulkan, &ref_device);
 }
 
 ezGALCommandEncoderImplVulkan::~ezGALCommandEncoderImplVulkan()
@@ -50,8 +50,8 @@ void ezGALCommandEncoderImplVulkan::Reset()
   m_pGraphicsPipeline = nullptr;
   m_pComputePipeline = nullptr;
 
-  m_viewport = vk::Viewport();
-  m_scissor = vk::Rect2D();
+  m_Viewport = vk::Viewport();
+  m_Scissor = vk::Rect2D();
   m_uiStencilRefValue = 0;
 
   m_pIndexBuffer = nullptr;
@@ -74,7 +74,7 @@ void ezGALCommandEncoderImplVulkan::Reset()
   m_DescriptorCache.Clear();
   m_PushConstants.Clear();
 
-  m_renderPass = vk::RenderPassBeginInfo();
+  m_RenderPass = vk::RenderPassBeginInfo();
 }
 
 void ezGALCommandEncoderImplVulkan::EndFrame()
@@ -119,9 +119,9 @@ void ezGALCommandEncoderImplVulkan::MarkAllStateDirty()
   }
 }
 
-void ezGALCommandEncoderImplVulkan::SetCurrentCommandBuffer(vk::CommandBuffer* commandBuffer)
+void ezGALCommandEncoderImplVulkan::SetCurrentCommandBuffer(vk::CommandBuffer* pCommandBuffer)
 {
-  m_pCommandBuffer = commandBuffer;
+  m_pCommandBuffer = pCommandBuffer;
 }
 
 // State setting functions
@@ -209,7 +209,7 @@ void ezGALCommandEncoderImplVulkan::CopyBufferRegionPlatform(const ezGALBuffer* 
   m_pCommandBuffer->copyBuffer(pSourceVulkan->GetVkBuffer(), pDestinationVulkan->GetVkBuffer(), 1, &bufferCopy);
 }
 
-void ezGALCommandEncoderImplVulkan::UpdateBufferPlatform(const ezGALBuffer* pDestination, ezUInt32 uiDestOffset, ezArrayPtr<const ezUInt8> pSourceData, ezGALUpdateMode::Enum updateMode)
+void ezGALCommandEncoderImplVulkan::UpdateBufferPlatform(const ezGALBuffer* pDestination, ezUInt32 uiDestOffset, ezArrayPtr<const ezUInt8> sourceData, ezGALUpdateMode::Enum updateMode)
 {
   auto pVulkanDestination = static_cast<const ezGALBufferVulkan*>(pDestination);
   switch (updateMode)
@@ -217,12 +217,12 @@ void ezGALCommandEncoderImplVulkan::UpdateBufferPlatform(const ezGALBuffer* pDes
     case ezGALUpdateMode::TransientConstantBuffer:
       EZ_ASSERT_DEBUG(pDestination->GetDescription().m_BufferFlags.AreAllSet(ezGALBufferUsageFlags::Transient | ezGALBufferUsageFlags::ConstantBuffer), "Only transient constant buffer can make use of TransientConstantBuffer update mode");
       EZ_ASSERT_DEBUG(uiDestOffset == 0, "Offset not supported");
-      EZ_ASSERT_DEBUG(pVulkanDestination->GetDescription().m_uiTotalSize == pSourceData.GetCount(), "Transient buffers must be updated in their entirety");
-      m_pUniformBufferPool->UpdateBuffer(pVulkanDestination, pSourceData);
+      EZ_ASSERT_DEBUG(pVulkanDestination->GetDescription().m_uiTotalSize == sourceData.GetCount(), "Transient buffers must be updated in their entirety");
+      m_pUniformBufferPool->UpdateBuffer(pVulkanDestination, sourceData);
       m_bDynamicOffsetsDirty = true;
       break;
     case ezGALUpdateMode::AheadOfTime:
-      m_GALDeviceVulkan.GetInitContext().UpdateBuffer(pVulkanDestination, uiDestOffset, pSourceData);
+      m_GALDeviceVulkan.GetInitContext().UpdateBuffer(pVulkanDestination, uiDestOffset, sourceData);
       break;
       EZ_DEFAULT_CASE_NOT_IMPLEMENTED
   }
@@ -268,9 +268,9 @@ void ezGALCommandEncoderImplVulkan::CopyTexturePlatform(const ezGALTexture* pDes
   m_pCommandBuffer->copyImage(source->GetImage(), vk::ImageLayout::eTransferSrcOptimal, destination->GetImage(), vk::ImageLayout::eTransferDstOptimal, destDesc.m_uiMipLevelCount, imageCopies.GetData());
 }
 
-void ezGALCommandEncoderImplVulkan::CopyTextureRegionPlatform(const ezGALTexture* pDestination, const ezGALTextureSubresource& DestinationSubResource,
-  const ezVec3U32& DestinationPoint, const ezGALTexture* pSource,
-  const ezGALTextureSubresource& SourceSubResource, const ezBoundingBoxu32& Box)
+void ezGALCommandEncoderImplVulkan::CopyTextureRegionPlatform(const ezGALTexture* pDestination, const ezGALTextureSubresource& destinationSubResource,
+  const ezVec3U32& vDestinationPoint, const ezGALTexture* pSource,
+  const ezGALTextureSubresource& sourceSubResource, const ezBoundingBoxu32& box)
 {
   auto destination = static_cast<const ezGALTextureVulkan*>(pDestination->GetParentResource());
   auto source = static_cast<const ezGALTextureVulkan*>(pSource->GetParentResource());
@@ -282,39 +282,39 @@ void ezGALCommandEncoderImplVulkan::CopyTextureRegionPlatform(const ezGALTexture
 
   vk::ImageAspectFlagBits imageAspect = ezGALResourceFormat::IsDepthFormat(destDesc.m_Format) ? vk::ImageAspectFlagBits::eDepth : vk::ImageAspectFlagBits::eColor;
 
-  ezVec3U32 extent = Box.m_vMax - Box.m_vMin;
+  ezVec3U32 extent = box.m_vMax - box.m_vMin;
 
   vk::ImageCopy imageCopy = {};
-  imageCopy.dstOffset.x = DestinationPoint.x;
-  imageCopy.dstOffset.y = DestinationPoint.y;
-  imageCopy.dstOffset.z = DestinationPoint.z;
+  imageCopy.dstOffset.x = vDestinationPoint.x;
+  imageCopy.dstOffset.y = vDestinationPoint.y;
+  imageCopy.dstOffset.z = vDestinationPoint.z;
   imageCopy.dstSubresource.aspectMask = imageAspect;
-  imageCopy.dstSubresource.baseArrayLayer = DestinationSubResource.m_uiArraySlice;
+  imageCopy.dstSubresource.baseArrayLayer = destinationSubResource.m_uiArraySlice;
   imageCopy.dstSubresource.layerCount = 1;
-  imageCopy.dstSubresource.mipLevel = DestinationSubResource.m_uiMipLevel;
+  imageCopy.dstSubresource.mipLevel = destinationSubResource.m_uiMipLevel;
   imageCopy.extent.width = extent.x;
   imageCopy.extent.height = extent.y;
   imageCopy.extent.depth = extent.z;
-  imageCopy.srcOffset.x = Box.m_vMin.x;
-  imageCopy.srcOffset.y = Box.m_vMin.y;
-  imageCopy.srcOffset.z = Box.m_vMin.z;
+  imageCopy.srcOffset.x = box.m_vMin.x;
+  imageCopy.srcOffset.y = box.m_vMin.y;
+  imageCopy.srcOffset.z = box.m_vMin.z;
   imageCopy.srcSubresource.aspectMask = imageAspect;
-  imageCopy.srcSubresource.baseArrayLayer = SourceSubResource.m_uiArraySlice;
+  imageCopy.srcSubresource.baseArrayLayer = sourceSubResource.m_uiArraySlice;
   imageCopy.srcSubresource.layerCount = 1;
-  imageCopy.srcSubresource.mipLevel = SourceSubResource.m_uiMipLevel;
+  imageCopy.srcSubresource.mipLevel = sourceSubResource.m_uiMipLevel;
 
   m_pCommandBuffer->copyImage(source->GetImage(), vk::ImageLayout::eTransferSrcOptimal, destination->GetImage(), vk::ImageLayout::eTransferDstOptimal, 1, &imageCopy);
 }
 
-void ezGALCommandEncoderImplVulkan::UpdateTexturePlatform(const ezGALTexture* pDestination, const ezGALTextureSubresource& DestinationSubResource,
-  const ezBoundingBoxu32& DestinationBox, const ezGALSystemMemoryDescription& data)
+void ezGALCommandEncoderImplVulkan::UpdateTexturePlatform(const ezGALTexture* pDestination, const ezGALTextureSubresource& destinationSubResource,
+  const ezBoundingBoxu32& destinationBox, const ezGALSystemMemoryDescription& data)
 {
   const ezGALTextureVulkan* pVulkanDestination = static_cast<const ezGALTextureVulkan*>(pDestination);
-  m_GALDeviceVulkan.GetInitContext().UpdateTexture(pVulkanDestination, DestinationSubResource, DestinationBox, data);
+  m_GALDeviceVulkan.GetInitContext().UpdateTexture(pVulkanDestination, destinationSubResource, destinationBox, data);
 }
 
-void ezGALCommandEncoderImplVulkan::ResolveTexturePlatform(const ezGALTexture* pDestination, const ezGALTextureSubresource& DestinationSubResource,
-  const ezGALTexture* pSource, const ezGALTextureSubresource& SourceSubResource)
+void ezGALCommandEncoderImplVulkan::ResolveTexturePlatform(const ezGALTexture* pDestination, const ezGALTextureSubresource& destinationSubResource,
+  const ezGALTexture* pSource, const ezGALTextureSubresource& sourceSubResource)
 {
   auto pVulkanDestination = static_cast<const ezGALTextureVulkan*>(pDestination->GetParentResource());
   auto pVulkanSource = static_cast<const ezGALTextureVulkan*>(pSource->GetParentResource());
@@ -327,16 +327,16 @@ void ezGALCommandEncoderImplVulkan::ResolveTexturePlatform(const ezGALTexture* p
   // TODO need to determine size of the subresource
   vk::ImageResolve resolveRegion = {};
   resolveRegion.dstSubresource.aspectMask = pVulkanDestination->GetFullRange().aspectMask;
-  resolveRegion.dstSubresource.baseArrayLayer = DestinationSubResource.m_uiArraySlice;
+  resolveRegion.dstSubresource.baseArrayLayer = destinationSubResource.m_uiArraySlice;
   resolveRegion.dstSubresource.layerCount = 1;
-  resolveRegion.dstSubresource.mipLevel = DestinationSubResource.m_uiMipLevel;
+  resolveRegion.dstSubresource.mipLevel = destinationSubResource.m_uiMipLevel;
   resolveRegion.extent.width = ezMath::Min(destDesc.m_uiWidth, srcDesc.m_uiWidth);
   resolveRegion.extent.height = ezMath::Min(destDesc.m_uiHeight, srcDesc.m_uiHeight);
   resolveRegion.extent.depth = ezMath::Min(destDesc.m_uiDepth, srcDesc.m_uiDepth);
   resolveRegion.srcSubresource.aspectMask = pVulkanSource->GetFullRange().aspectMask;
-  resolveRegion.srcSubresource.baseArrayLayer = SourceSubResource.m_uiArraySlice;
+  resolveRegion.srcSubresource.baseArrayLayer = sourceSubResource.m_uiArraySlice;
   resolveRegion.srcSubresource.layerCount = 1;
-  resolveRegion.srcSubresource.mipLevel = SourceSubResource.m_uiMipLevel;
+  resolveRegion.srcSubresource.mipLevel = sourceSubResource.m_uiMipLevel;
 
   if (srcDesc.m_SampleCount != ezGALMSAASampleCount::None)
   {
@@ -345,9 +345,9 @@ void ezGALCommandEncoderImplVulkan::ResolveTexturePlatform(const ezGALTexture* p
   else
   {
     // DX11 allows calling resolve on a non-msaa source. For now, allow this as well in Vulkan.
-    vk::Extent3D sourceMipLevelSize = pVulkanSource->GetMipLevelSize(SourceSubResource.m_uiMipLevel);
+    vk::Extent3D sourceMipLevelSize = pVulkanSource->GetMipLevelSize(sourceSubResource.m_uiMipLevel);
     vk::Offset3D sourceMipLevelEndOffset = {(ezInt32)sourceMipLevelSize.width, (ezInt32)sourceMipLevelSize.height, (ezInt32)sourceMipLevelSize.depth};
-    vk::Extent3D dstMipLevelSize = pVulkanDestination->GetMipLevelSize(DestinationSubResource.m_uiMipLevel);
+    vk::Extent3D dstMipLevelSize = pVulkanDestination->GetMipLevelSize(destinationSubResource.m_uiMipLevel);
     vk::Offset3D dstMipLevelEndOffset = {(ezInt32)sourceMipLevelSize.width, (ezInt32)sourceMipLevelSize.height, (ezInt32)sourceMipLevelSize.depth};
 
     vk::ImageBlit imageBlitRegion;
@@ -503,58 +503,58 @@ void ezGALCommandEncoderImplVulkan::BeginRenderingPlatform(const ezGALRenderingS
   // We have to ensure we have enough queries before entering the render pass as we can't replenish pools while within.
   m_GALDeviceVulkan.GetQueryPool().EnsureFreeQueryPoolSize(*m_pCommandBuffer);
 
-  m_renderPass.renderPass = ezResourceCacheVulkan::RequestRenderPass(renderingSetup.GetRenderPass());
-  m_renderPass.framebuffer = ezResourceCacheVulkan::RequestFrameBuffer(m_renderPass.renderPass, renderingSetup.GetFrameBuffer());
+  m_RenderPass.renderPass = ezResourceCacheVulkan::RequestRenderPass(renderingSetup.GetRenderPass());
+  m_RenderPass.framebuffer = ezResourceCacheVulkan::RequestFrameBuffer(m_RenderPass.renderPass, renderingSetup.GetFrameBuffer());
   m_uiLayers = renderingSetup.GetFrameBuffer().m_uiSliceCount;
   ezSizeU32 size = renderingSetup.GetFrameBuffer().m_Size;
   SetScissorRectPlatform(ezRectU32(size.width, size.height));
 
   {
-    m_renderPass.renderArea.offset.setX(0).setY(0);
-    m_renderPass.renderArea.extent.setHeight(size.height).setWidth(size.width);
+    m_RenderPass.renderArea.offset.setX(0).setY(0);
+    m_RenderPass.renderArea.extent.setHeight(size.height).setWidth(size.width);
 
-    m_clearValues.Clear();
+    m_ClearValues.Clear();
     const bool bHasDepth = renderingSetup.HasDepthStencilTarget();
     const ezUInt32 uiColorCount = renderingSetup.GetColorTargetCount();
 
     if (bHasDepth)
     {
-      vk::ClearValue& depthClear = m_clearValues.ExpandAndGetRef();
+      vk::ClearValue& depthClear = m_ClearValues.ExpandAndGetRef();
       depthClear.depthStencil.setDepth(renderingSetup.GetClearDepth()).setStencil(renderingSetup.GetClearStencil());
 
       const ezGALRenderTargetViewVulkan* pRenderTargetView = static_cast<const ezGALRenderTargetViewVulkan*>(m_GALDeviceVulkan.GetRenderTargetView(renderingSetup.GetFrameBuffer().m_hDepthTarget));
-      m_depthMask = pRenderTargetView->GetRange().aspectMask;
+      m_DepthMask = pRenderTargetView->GetRange().aspectMask;
     }
     for (ezUInt32 i = 0; i < uiColorCount; i++)
     {
-      vk::ClearValue& colorClear = m_clearValues.ExpandAndGetRef();
+      vk::ClearValue& colorClear = m_ClearValues.ExpandAndGetRef();
       ezColor col = renderingSetup.GetClearColor(i);
       colorClear.color.setFloat32({col.r, col.g, col.b, col.a});
     }
 
-    m_renderPass.clearValueCount = m_clearValues.GetCount();
-    m_renderPass.pClearValues = m_clearValues.GetData();
+    m_RenderPass.clearValueCount = m_ClearValues.GetCount();
+    m_RenderPass.pClearValues = m_ClearValues.GetData();
   }
 
   m_bPipelineStateDirty = true;
   m_bViewportDirty = true;
   m_bScissorDirty = true;
 
-  m_pCommandBuffer->beginRenderPass(m_renderPass, vk::SubpassContents::eInline);
+  m_pCommandBuffer->beginRenderPass(m_RenderPass, vk::SubpassContents::eInline);
 }
 
 void ezGALCommandEncoderImplVulkan::EndRenderingPlatform()
 {
   m_pCommandBuffer->endRenderPass();
 
-  m_depthMask = {};
+  m_DepthMask = {};
   m_uiLayers = 0;
 
-  m_renderPass.renderPass = nullptr;
-  m_renderPass.framebuffer = nullptr;
+  m_RenderPass.renderPass = nullptr;
+  m_RenderPass.framebuffer = nullptr;
 }
 
-void ezGALCommandEncoderImplVulkan::ClearPlatform(const ezColor& ClearColor, ezUInt32 uiRenderTargetClearMask, bool bClearDepth, bool bClearStencil, float fDepthClear, ezUInt8 uiStencilClear)
+void ezGALCommandEncoderImplVulkan::ClearPlatform(const ezColor& clearColor, ezUInt32 uiRenderTargetClearMask, bool bClearDepth, bool bClearStencil, float fDepthClear, ezUInt8 uiStencilClear)
 {
   // #TODO_VULKAN Not sure if we need barriers here.
   ezHybridArray<vk::ClearAttachment, 8> attachments;
@@ -568,21 +568,21 @@ void ezGALCommandEncoderImplVulkan::ClearPlatform(const ezColor& ClearColor, ezU
       {
         vk::ClearAttachment& attachment = attachments.ExpandAndGetRef();
         attachment.aspectMask = vk::ImageAspectFlagBits::eColor;
-        attachment.clearValue.color.setFloat32({ClearColor.r, ClearColor.g, ClearColor.b, ClearColor.a});
+        attachment.clearValue.color.setFloat32({clearColor.r, clearColor.g, clearColor.b, clearColor.a});
         attachment.colorAttachment = i;
       }
     }
   }
   // Clear depth / stencil
-  if ((bClearDepth || bClearStencil) && m_depthMask != vk::ImageAspectFlagBits::eNone)
+  if ((bClearDepth || bClearStencil) && m_DepthMask != vk::ImageAspectFlagBits::eNone)
   {
     vk::ClearAttachment& attachment = attachments.ExpandAndGetRef();
-    if (bClearDepth && (m_depthMask & vk::ImageAspectFlagBits::eDepth))
+    if (bClearDepth && (m_DepthMask & vk::ImageAspectFlagBits::eDepth))
     {
       attachment.aspectMask |= vk::ImageAspectFlagBits::eDepth;
       attachment.clearValue.depthStencil.setDepth(fDepthClear);
     }
-    if (bClearStencil && (m_depthMask & vk::ImageAspectFlagBits::eStencil))
+    if (bClearStencil && (m_DepthMask & vk::ImageAspectFlagBits::eStencil))
     {
       attachment.aspectMask |= vk::ImageAspectFlagBits::eStencil;
       attachment.clearValue.depthStencil.setStencil(uiStencilClear);
@@ -592,7 +592,7 @@ void ezGALCommandEncoderImplVulkan::ClearPlatform(const ezColor& ClearColor, ezU
   vk::ClearRect rect;
   rect.baseArrayLayer = 0;
   rect.layerCount = m_uiLayers;
-  rect.rect = m_renderPass.renderArea;
+  rect.rect = m_RenderPass.renderArea;
   m_pCommandBuffer->clearAttachments(attachments.GetCount(), attachments.GetData(), 1, &rect);
 }
 
@@ -692,7 +692,7 @@ void ezGALCommandEncoderImplVulkan::SetGraphicsPipelinePlatform(const ezGALGraph
     }
     if (bScissorEnabled != m_bScissorEnabled)
     {
-      // Whether scissor follows m_scissor or is derived from m_viewport changes, so the scissor must be re-applied.
+      // Whether scissor follows m_Scissor or is derived from m_Viewport changes, so the scissor must be re-applied.
       m_bScissorDirty = true;
       m_bScissorEnabled = bScissorEnabled;
     }
@@ -727,10 +727,10 @@ void ezGALCommandEncoderImplVulkan::SetViewportPlatform(const ezRectFloat& rect,
   // We use ezClipSpaceYMode::Regular and rely in the Vulkan 1.1 feature that a negative height performs y-inversion of the clip-space to framebuffer-space transform.
   // https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/VK_KHR_maintenance1.html
   vk::Viewport viewport = {rect.x, rect.height + rect.y, rect.width, -rect.height, fMinDepth, fMaxDepth};
-  if (m_viewport != viewport)
+  if (m_Viewport != viewport)
   {
     // Viewport is marked as dynamic in the pipeline layout and thus does not mark m_bPipelineStateDirty.
-    m_viewport = viewport;
+    m_Viewport = viewport;
     m_bViewportDirty = true;
     if (!m_bScissorEnabled)
     {
@@ -743,9 +743,9 @@ void ezGALCommandEncoderImplVulkan::SetViewportPlatform(const ezRectFloat& rect,
 void ezGALCommandEncoderImplVulkan::SetScissorRectPlatform(const ezRectU32& rect)
 {
   vk::Rect2D scissor(vk::Offset2D(rect.x, rect.y), vk::Extent2D(rect.width, rect.height));
-  if (m_scissor != scissor)
+  if (m_Scissor != scissor)
   {
-    m_scissor = scissor;
+    m_Scissor = scissor;
     m_bScissorDirty = true;
   }
 }
@@ -811,7 +811,7 @@ ezResult ezGALCommandEncoderImplVulkan::FlushDeferredStateChanges()
 
   if (!m_bInsideCompute && m_bViewportDirty)
   {
-    m_pCommandBuffer->setViewport(0, 1, &m_viewport);
+    m_pCommandBuffer->setViewport(0, 1, &m_Viewport);
     m_bViewportDirty = false;
   }
 
@@ -819,11 +819,11 @@ ezResult ezGALCommandEncoderImplVulkan::FlushDeferredStateChanges()
   {
     if (m_bScissorEnabled)
     {
-      m_pCommandBuffer->setScissor(0, 1, &m_scissor);
+      m_pCommandBuffer->setScissor(0, 1, &m_Scissor);
     }
     else
     {
-      vk::Rect2D noScissor({int(m_viewport.x), int(m_viewport.y + m_viewport.height)}, {ezUInt32(m_viewport.width), ezUInt32(-m_viewport.height)});
+      vk::Rect2D noScissor({int(m_Viewport.x), int(m_Viewport.y + m_Viewport.height)}, {ezUInt32(m_Viewport.width), ezUInt32(-m_Viewport.height)});
       m_pCommandBuffer->setScissor(0, 1, &noScissor);
     }
     m_bScissorDirty = false;

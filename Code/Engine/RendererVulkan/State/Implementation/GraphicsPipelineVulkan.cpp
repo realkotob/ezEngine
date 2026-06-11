@@ -13,9 +13,7 @@ ezGALGraphicsPipelineVulkan::ezGALGraphicsPipelineVulkan(const ezGALGraphicsPipe
 {
 }
 
-ezGALGraphicsPipelineVulkan::~ezGALGraphicsPipelineVulkan()
-{
-}
+ezGALGraphicsPipelineVulkan::~ezGALGraphicsPipelineVulkan() = default;
 
 ezResult ezGALGraphicsPipelineVulkan::InitPlatform(ezGALDevice* pDevice)
 {
@@ -124,7 +122,7 @@ ezResult ezGALGraphicsPipelineVulkan::InitPlatform(ezGALDevice* pDevice)
   if (bTessellation)
     pipe.pTessellationState = &tessellationInfo;
 
-  VK_ASSERT_DEV(pDeviceVulkan->GetVulkanDevice().createGraphicsPipelines(ezResourceCacheVulkan::GetPipelineCache(), 1, &pipe, nullptr, &m_pipeline));
+  VK_ASSERT_DEV(pDeviceVulkan->GetVulkanDevice().createGraphicsPipelines(ezResourceCacheVulkan::GetPipelineCache(), 1, &pipe, nullptr, &m_Pipeline));
 
   return EZ_SUCCESS;
 }
@@ -133,10 +131,10 @@ ezResult ezGALGraphicsPipelineVulkan::DeInitPlatform(ezGALDevice* pDevice)
 {
   ezGALDeviceVulkan* pDeviceVulkan = static_cast<ezGALDeviceVulkan*>(pDevice);
 
-  if (m_pipeline)
+  if (m_Pipeline)
   {
-    pDeviceVulkan->DeleteLater(m_pipeline);
-    m_pipeline = nullptr;
+    pDeviceVulkan->DeleteLater(m_Pipeline);
+    m_Pipeline = nullptr;
   }
   return EZ_SUCCESS;
 }

@@ -7,7 +7,7 @@
 void ezStagingBufferPoolVulkan::Initialize(ezGALDeviceVulkan* pDevice, ezUInt64 uiStartingPoolSize)
 {
   m_pDevice = pDevice;
-  m_device = pDevice->GetVulkanDevice();
+  m_Device = pDevice->GetVulkanDevice();
 
   const vk::PhysicalDeviceProperties& properties = m_pDevice->GetPhysicalDeviceProperties();
   m_uiAlignment = ezMath::Max<ezUInt64>(16ull, m_uiAlignment, (ezUInt64)properties.limits.nonCoherentAtomSize);
@@ -19,7 +19,7 @@ void ezStagingBufferPoolVulkan::Initialize(ezGALDeviceVulkan* pDevice, ezUInt64 
 void ezStagingBufferPoolVulkan::DeInitialize()
 {
   // We assume the device makes sure no buffers are still in use before calling this.
-  m_device = nullptr;
+  m_Device = nullptr;
   for (StagingBufferPool* pPool : m_Pools)
   {
     EZ_DELETE(m_pDevice->GetAllocator(), pPool);
@@ -62,16 +62,16 @@ void ezStagingBufferPoolVulkan::BeforeCommandBufferSubmit()
   }
 }
 
-ezStagingBufferVulkan ezStagingBufferPoolVulkan::AllocateBuffer(ezUInt64 size)
+ezStagingBufferVulkan ezStagingBufferPoolVulkan::AllocateBuffer(ezUInt64 uiSize)
 {
-  EZ_ASSERT_DEBUG(m_device, "ezStagingBufferPoolVulkan::Initialize not called");
+  EZ_ASSERT_DEBUG(m_Device, "ezStagingBufferPoolVulkan::Initialize not called");
   ezStagingBufferVulkan buffer;
 
   ezUInt32 uiOffset = 0;
   ezByteArrayPtr allocation;
   for (StagingBufferPool* pPool : m_Pools)
   {
-    if (pPool->Allocate((ezUInt32)size, m_pDevice->GetCurrentFrame(), uiOffset, allocation).Succeeded())
+    if (pPool->Allocate((ezUInt32)uiSize, m_pDevice->GetCurrentFrame(), uiOffset, allocation).Succeeded())
     {
       buffer.m_alloc = pPool->m_Alloc;
       buffer.m_buffer = pPool->m_Buffer;
@@ -81,8 +81,8 @@ ezStagingBufferVulkan ezStagingBufferPoolVulkan::AllocateBuffer(ezUInt64 size)
 
   if (allocation.IsEmpty())
   {
-    StagingBufferPool* pPool = GetFreePool(size);
-    pPool->Allocate((ezUInt32)size, m_pDevice->GetCurrentFrame(), uiOffset, allocation).AssertSuccess("Newly created pool should be able to allocate requested size");
+    StagingBufferPool* pPool = GetFreePool(uiSize);
+    pPool->Allocate((ezUInt32)uiSize, m_pDevice->GetCurrentFrame(), uiOffset, allocation).AssertSuccess("Newly created pool should be able to allocate requested size");
     buffer.m_alloc = pPool->m_Alloc;
     buffer.m_buffer = pPool->m_Buffer;
   }
@@ -128,12 +128,12 @@ ezStagingBufferPoolVulkan::StagingBufferPool::~StagingBufferPool()
   ezMemoryAllocatorVulkan::DestroyBuffer(m_Buffer, m_Alloc);
 }
 
-ezResult ezStagingBufferPoolVulkan::StagingBufferPool::Allocate(ezUInt32 uiSize, ezUInt64 uiCurrentFrame, ezUInt32& out_uiStartOffset, ezByteArrayPtr& out_Allocation)
+ezResult ezStagingBufferPoolVulkan::StagingBufferPool::Allocate(ezUInt32 uiSize, ezUInt64 uiCurrentFrame, ezUInt32& out_uiStartOffset, ezByteArrayPtr& out_allocation)
 {
   if (m_Tracker.Allocate(uiSize, uiCurrentFrame, out_uiStartOffset).Failed())
     return EZ_FAILURE;
 
-  out_Allocation = m_Data.GetSubArray(out_uiStartOffset, uiSize);
+  out_allocation = m_Data.GetSubArray(out_uiStartOffset, uiSize);
   return EZ_SUCCESS;
 }
 

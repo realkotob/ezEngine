@@ -36,8 +36,8 @@ vk::ImageSubresourceRange ezGALTextureVulkan::GetFullRange() const
 
 vk::ImageAspectFlags ezGALTextureVulkan::GetAspectMask() const
 {
-  vk::ImageAspectFlags mask = ezConversionUtilsVulkan::IsDepthFormat(m_imageFormat) ? vk::ImageAspectFlagBits::eDepth : vk::ImageAspectFlagBits::eColor;
-  if (ezConversionUtilsVulkan::IsStencilFormat(m_imageFormat))
+  vk::ImageAspectFlags mask = ezConversionUtilsVulkan::IsDepthFormat(m_ImageFormat) ? vk::ImageAspectFlagBits::eDepth : vk::ImageAspectFlagBits::eColor;
+  if (ezConversionUtilsVulkan::IsStencilFormat(m_ImageFormat))
     mask |= vk::ImageAspectFlagBits::eStencil;
   return mask;
 }
@@ -56,14 +56,14 @@ vk::DescriptorImageInfo ezGALTextureVulkan::GetDescriptorImageInfo(ezGALTextureR
     const ezGALResourceFormat::Enum viewFormat = overrideViewFormat == ezGALResourceFormat::Invalid ? m_Description.m_Format : overrideViewFormat;
 
     vk::ImageViewCreateInfo viewCreateInfo;
-    viewCreateInfo.image = m_image;
+    viewCreateInfo.image = m_Image;
     viewCreateInfo.viewType = ezConversionUtilsVulkan::GetImageViewType(textureType);
     viewCreateInfo.format = m_pDevice->GetFormatLookupTable().GetFormatInfo(viewFormat).m_format;
     viewCreateInfo.subresourceRange = ezConversionUtilsVulkan::GetSubresourceRange(viewFormat, textureRange);
     viewCreateInfo.subresourceRange.aspectMask &= ~vk::ImageAspectFlagBits::eStencil;
 
     VK_ASSERT_DEV(m_pDevice->GetVulkanDevice().createImageView(&viewCreateInfo, nullptr, &imageInfo.imageView));
-    imageInfo.imageLayout = ezConversionUtilsVulkan::GetTextureReadLayout(m_imageFormat);
+    imageInfo.imageLayout = ezConversionUtilsVulkan::GetTextureReadLayout(m_ImageFormat);
     if (resourceType == ezGALShaderResourceType::TextureRW)
       imageInfo.imageLayout = vk::ImageLayout::eGeneral;
     m_TextureViews.Insert(view, imageInfo);
@@ -86,12 +86,12 @@ ezResult ezGALTextureVulkan::InitPlatform(ezGALDevice* pDevice, ezArrayPtr<ezGAL
   vk::ImageFormatListCreateInfo imageFormats;
   vk::ImageCreateInfo createInfo = {};
 
-  m_imageFormat = ComputeImageFormat(m_pDevice, m_Description.m_Format, createInfo, imageFormats);
+  m_ImageFormat = ComputeImageFormat(m_pDevice, m_Description.m_Format, createInfo, imageFormats);
   ComputeCreateInfo(m_pDevice, m_Description, createInfo);
 
   if (m_Description.m_pExisitingNativeObject != nullptr)
   {
-    m_image = static_cast<VkImage>(m_Description.m_pExisitingNativeObject);
+    m_Image = static_cast<VkImage>(m_Description.m_pExisitingNativeObject);
     m_pDevice->GetInitContext().InitTexture(this, createInfo, pInitialData);
   }
   else
@@ -101,7 +101,7 @@ ezResult ezGALTextureVulkan::InitPlatform(ezGALDevice* pDevice, ezArrayPtr<ezGAL
 
     vk::ImageFormatProperties props2;
     VK_ASSERT_DEBUG(m_pDevice->GetVulkanPhysicalDevice().getImageFormatProperties(createInfo.format, createInfo.imageType, createInfo.tiling, createInfo.usage, createInfo.flags, &props2));
-    VK_SUCCEED_OR_RETURN_EZ_FAILURE(ezMemoryAllocatorVulkan::CreateImage(createInfo, allocInfo, m_image, m_alloc, &m_allocInfo));
+    VK_SUCCEED_OR_RETURN_EZ_FAILURE(ezMemoryAllocatorVulkan::CreateImage(createInfo, allocInfo, m_Image, m_pAlloc, &m_AllocInfo));
     m_pDevice->GetInitContext().InitTexture(this, createInfo, pInitialData);
   }
   return EZ_SUCCESS;
@@ -214,12 +214,12 @@ void ezGALTextureVulkan::ComputeCreateInfo(const ezGALDeviceVulkan* pDevice, con
   }
 }
 
-void ezGALTextureVulkan::ComputeAllocInfo(ezVulkanAllocationCreateInfo& allocInfo)
+void ezGALTextureVulkan::ComputeAllocInfo(ezVulkanAllocationCreateInfo& ref_allocInfo)
 {
-  allocInfo.m_usage = ezVulkanMemoryUsage::Auto;
+  ref_allocInfo.m_usage = ezVulkanMemoryUsage::Auto;
 }
 
-ezUInt32 ezGALTextureVulkan::ComputeSubResourceOffsets(const ezGALDeviceVulkan* pDevice, const ezGALTextureCreationDescription& description, ezDynamicArray<SubResourceOffset>& subResourceSizes)
+ezUInt32 ezGALTextureVulkan::ComputeSubResourceOffsets(const ezGALDeviceVulkan* pDevice, const ezGALTextureCreationDescription& description, ezDynamicArray<SubResourceOffset>& ref_subResourceSizes)
 {
   const ezUInt32 alignment = (ezUInt32)ezGALBufferVulkan::GetAlignment(pDevice, vk::BufferUsageFlagBits::eTransferDst);
   const vk::Format stagingFormat = pDevice->GetFormatLookupTable().GetFormatInfo(description.m_Format).m_readback;
@@ -228,14 +228,14 @@ ezUInt32 ezGALTextureVulkan::ComputeSubResourceOffsets(const ezGALDeviceVulkan* 
   const ezUInt32 arrayLayers = (description.m_Type == ezGALTextureType::TextureCube || description.m_Type == ezGALTextureType::TextureCubeArray) ? (description.m_uiArraySize * 6) : description.m_uiArraySize;
   const ezUInt32 mipLevels = description.m_uiMipLevelCount;
 
-  subResourceSizes.Reserve(arrayLayers * mipLevels);
+  ref_subResourceSizes.Reserve(arrayLayers * mipLevels);
   ezUInt32 uiOffset = 0;
   for (ezUInt32 uiLayer = 0; uiLayer < arrayLayers; uiLayer++)
   {
     for (ezUInt32 uiMipLevel = 0; uiMipLevel < mipLevels; uiMipLevel++)
     {
       const ezUInt32 uiSubresourceIndex = uiMipLevel + uiLayer * mipLevels;
-      EZ_ASSERT_DEBUG(subResourceSizes.GetCount() == uiSubresourceIndex, "");
+      EZ_ASSERT_DEBUG(ref_subResourceSizes.GetCount() == uiSubresourceIndex, "");
 
       const vk::Extent3D imageExtent = GetMipLevelSize(description, uiMipLevel);
       const VkExtent3D blockCount = {
@@ -244,7 +244,7 @@ ezUInt32 ezGALTextureVulkan::ComputeSubResourceOffsets(const ezGALDeviceVulkan* 
         (imageExtent.depth + blockExtent[2] - 1) / blockExtent[2]};
 
       const ezUInt32 uiTotalSize = uiBlockSize * blockCount.width * blockCount.height * blockCount.depth;
-      subResourceSizes.PushBack({uiOffset, uiTotalSize, blockCount.width / blockExtent[0], blockCount.height / blockExtent[1]});
+      ref_subResourceSizes.PushBack({uiOffset, uiTotalSize, blockCount.width * blockExtent[0], blockCount.height * blockExtent[1]});
       uiOffset += ezMemoryUtils::AlignSize(uiTotalSize, alignment);
     }
   }
@@ -254,12 +254,12 @@ ezUInt32 ezGALTextureVulkan::ComputeSubResourceOffsets(const ezGALDeviceVulkan* 
 ezResult ezGALTextureVulkan::DeInitPlatform(ezGALDevice* pDevice)
 {
   ezGALDeviceVulkan* pVulkanDevice = static_cast<ezGALDeviceVulkan*>(pDevice);
-  if (m_image && !m_Description.m_pExisitingNativeObject)
+  if (m_Image && !m_Description.m_pExisitingNativeObject)
   {
-    pVulkanDevice->DeleteLater(m_image, m_alloc);
-    m_allocInfo = {};
+    pVulkanDevice->DeleteLater(m_Image, m_pAlloc);
+    m_AllocInfo = {};
   }
-  m_image = nullptr;
+  m_Image = nullptr;
 
   for (auto it : m_TextureViews)
   {
@@ -272,5 +272,5 @@ ezResult ezGALTextureVulkan::DeInitPlatform(ezGALDevice* pDevice)
 
 void ezGALTextureVulkan::SetDebugNamePlatform(const char* szName) const
 {
-  m_pDevice->SetDebugName(szName, m_image, m_alloc);
+  m_pDevice->SetDebugName(szName, m_Image, m_pAlloc);
 }
