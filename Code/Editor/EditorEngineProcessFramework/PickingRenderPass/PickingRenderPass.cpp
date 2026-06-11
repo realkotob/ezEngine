@@ -439,6 +439,20 @@ void ezPickingRenderPass::ProcessPickingRenderData(ezExtractedRenderData& extrac
 
       extractedRenderData.AddRenderData(pRenderData, filteredCategory);
     }
+
+    ezArrayPtr<const ezTextureDependency> textureDependencies = extractedRenderData.GetTextureDependenciesWithCategory(originalCategory);
+    for (ezTextureDependency dependency : textureDependencies)
+    {
+      dependency.m_uiCategory = filteredCategory.m_uiValue;
+      extractedRenderData.AddDependency(dependency);
+    }
+
+    ezArrayPtr<const ezBufferDependency> bufferDependencies = extractedRenderData.GetBufferDependenciesWithCategory(originalCategory);
+    for (ezBufferDependency dependency : bufferDependencies)
+    {
+      dependency.m_uiCategory = filteredCategory.m_uiValue;
+      extractedRenderData.AddDependency(dependency);
+    }
   };
 
   Filter(ezDefaultRenderDataCategories::LitOpaqueStatic, s_LitOpaqueWithoutSelection);
