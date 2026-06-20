@@ -346,7 +346,8 @@ void ezPrefabReferenceComponent::ClearPreviousInstances()
     {
       if (it->WasCreatedByPrefab())
       {
-        GetWorld()->DeleteObjectNow(it->GetHandle());
+        constexpr bool bAlsoDeleteEmptyParents = false;
+        GetWorld()->DeleteObjectNow(it->GetHandle(), bAlsoDeleteEmptyParents);
       }
     }
   }
