@@ -12,9 +12,11 @@
 
 class ezGALCommandEncoder;
 class ezGALDevice;
+class ezRenderGraphPassObserver;
 class ezRenderGraphResourcePool;
 class ezRenderGraphResourceAllocator;
 class ezGALResourceStateTracker;
+struct ezRenderGraphInspectionInfo;
 
 /// Render graph usable for a single frame. Contains passes that declare transient resource dependencies. After all passes are added, the graph is compiled to cull unused passes, allocate and alias transient resources, and compute barrier placement, then executed. Passes are always executed in declaration order.
 ///
@@ -104,10 +106,10 @@ public:
   ezResult Compile();
 
   /// Compute texture and buffer barriers for each pass based on resource state tracking.
-  void ComputeBarriers(ezGALResourceStateTracker& ref_tracker);
+  void ComputeBarriers(ezGALResourceStateTracker& ref_tracker, ezArrayPtr<ezRenderGraphPassObserver*> observers = {});
 
   /// Execute all passes in compiled order.
-  void Execute(ezRenderGraphContext& ref_ctx);
+  void Execute(ezRenderGraphContext& ref_ctx, ezArrayPtr<ezRenderGraphPassObserver*> observers = {});
 
 private:
   friend class ezRenderGraphManager;
@@ -117,6 +119,8 @@ private:
 
   void StartPassBuilder(ezEnum<ezGALQueueType> queueType, ezStringView sName);
   void EndPassBuilder();
+
+  ezResult GetInspectionInfo(ezRenderGraphInspectionInfo& out_info) const;
 
   /// Find a pass by name and return its original index. Returns s_Unused if not found.
   ezUInt16 FindPassByName(ezStringView sName) const;
